@@ -1,9 +1,11 @@
 from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QLineEdit
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QIcon, QPixmap
 
 class Styles:
+    WINDOW_WIDTH = 400
+    WINDOW_HEIGTH = 300
     button_style = """
         QPushButton {
             background-color: #3498db;
@@ -25,11 +27,16 @@ class Styles:
     window_title = "DNS AdBlocker"
     window_background = "background-color: white;"
     shadow_effect_color = 150, 150, 150, 150  # Semi-transparent gray
-    label_style = """
+    title_style = """
         font-size: 24px;
         font-weight: bold;
         color: #2c3e50;
         padding: 10px;
+    """
+    label_style = """
+        font-size: 16px;
+        font-weight: bold;
+        color: #2c3e50;
     """
     input_label_style = """
         font-size: 18px;
@@ -48,12 +55,17 @@ class Styles:
             border: 2px solid #3498db;
         }
     """
+    ICON_PATH = "icon.png"
+    LOGO_PATH = "logo.png"
+    LOGO_WIDTH = 125
+    LOGO_HEIGTH = 125
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(Styles.window_title)
-        self.setFixedSize(400, 300)
+        self.setWindowIcon(QIcon(Styles.ICON_PATH))
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGTH)
         self.setStyleSheet(Styles.window_background)
         self.shadow_effect = QGraphicsDropShadowEffect()
         self.shadow_effect.setBlurRadius(8)
@@ -67,14 +79,24 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
 
-        # Welcome label with shadow effect
-        label = QLabel("DNS AdBlocker")
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title = QLabel("DNS AdBlocker")
+        title.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        title.setStyleSheet(Styles.title_style)
+        title.setGraphicsEffect(self.shadow_effect)
+        layout.addWidget(title)
+
+        label = QLabel("DNS-based Ad Blocker Developed By Itamar Dalal")
+        label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         label.setStyleSheet(Styles.label_style)
-        label.setGraphicsEffect(self.shadow_effect)
         layout.addWidget(label)
 
-        # Connect button
+        logo_label = QLabel()
+        pixmap = QPixmap(Styles.LOGO_PATH)
+        pixmap = pixmap.scaled(Styles.LOGO_WIDTH, Styles.LOGO_HEIGTH, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        logo_label.setPixmap(pixmap)
+        logo_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(logo_label)
+
         button = QPushButton("Connect To A Server")
         button.setStyleSheet(Styles.button_style)
         button.clicked.connect(self.connect_to_server_window)
@@ -87,10 +109,9 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
 
-        # Heading label
         label = QLabel("Connect to A Server")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet(Styles.label_style)
+        label.setStyleSheet(Styles.title_style)
         layout.addWidget(label)
 
         ip_label = QLabel("Server IP:")
@@ -122,7 +143,7 @@ class MainWindow(QMainWindow):
 
         back_button = QPushButton("Connect To A Server")
         back_button.setStyleSheet(Styles.button_style)
-        back_button.clicked.connect(self.welcome_window)
+        back_button.clicked.connect() # todo connecting to the server
         layout.addWidget(back_button)
 
         central_widget.setLayout(layout)
