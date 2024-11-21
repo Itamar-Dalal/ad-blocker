@@ -55,8 +55,8 @@ class Styles:
             border: 2px solid #3498db;
         }
     """
-    ICON_PATH = "icon.png"
-    LOGO_PATH = "logo.png"
+    ICON_PATH = r"assets\icons\icon.png"
+    LOGO_PATH = r"assets\images\logo.png"
     LOGO_WIDTH = 125
     LOGO_HEIGTH = 125
 
