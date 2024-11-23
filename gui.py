@@ -26,7 +26,7 @@ class Styles:
     """
     window_title = "DNS AdBlocker"
     window_background = "background-color: white;"
-    shadow_effect_color = 150, 150, 150, 150  # Semi-transparent gray
+    shadow_effect_color = 150, 150, 150, 150
     title_style = """
         font-size: 24px;
         font-weight: bold;
@@ -57,8 +57,8 @@ class Styles:
     """
     ICON_PATH = r"assets\icons\icon.png"
     LOGO_PATH = r"assets\images\logo.png"
-    LOGO_WIDTH = 125
-    LOGO_HEIGTH = 125
+    LOGO_WIDTH = 120
+    LOGO_HEIGTH = 120
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -96,6 +96,8 @@ class MainWindow(QMainWindow):
         logo_label.setPixmap(pixmap)
         logo_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(logo_label)
+
+        layout.addSpacing(20)
 
         button = QPushButton("Connect To A Server")
         button.setStyleSheet(Styles.button_style)
@@ -143,7 +145,7 @@ class MainWindow(QMainWindow):
 
         back_button = QPushButton("Connect To A Server")
         back_button.setStyleSheet(Styles.button_style)
-        back_button.clicked.connect() # todo connecting to the server
+        back_button.clicked.connect()
         layout.addWidget(back_button)
 
         central_widget.setLayout(layout)
