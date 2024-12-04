@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QHBox
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtGui import QColor, QIcon, QPixmap
+import client
 
 class Styles:
     WINDOW_WIDTH = 400
@@ -55,14 +56,28 @@ class Styles:
             border: 2px solid #3498db;
         }
     """
+    error_style = """
+        QLabel {
+            color: red;
+            font-size: 14px;
+            font-weight: bold;
+            white-space: normal;
+        }
+        QLineEdit {
+            border: 2px solid red;
+            background-color: #ffe6e6; /* Light red background for emphasis */
+        }
+    """
+
     ICON_PATH = r"assets\icons\icon.png"
     LOGO_PATH = r"assets\images\logo.png"
     LOGO_WIDTH = 120
     LOGO_HEIGTH = 120
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, c: client.Client):
         super().__init__()
+        self.client = c
         self.setWindowTitle(Styles.window_title)
         self.setWindowIcon(QIcon(Styles.ICON_PATH))
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGTH)
@@ -106,7 +121,7 @@ class MainWindow(QMainWindow):
 
         central_widget.setLayout(layout)
 
-    def connect_to_server_window(self):
+    def connect_to_server_window(self, error_msg=None):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -143,9 +158,17 @@ class MainWindow(QMainWindow):
         input_layout.addLayout(port_layout)
         layout.addLayout(input_layout)
 
+        if error_msg:
+            self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGTH + 13)
+            error_label = QLabel(error_msg)
+            error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            error_label.setStyleSheet(Styles.error_style)
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+
         back_button = QPushButton("Connect To A Server")
         back_button.setStyleSheet(Styles.button_style)
-        back_button.clicked.connect()
+        back_button.clicked.connect(lambda: self.client.connect_to_server(ip_input.text(), port_input.text()))
         layout.addWidget(back_button)
 
         central_widget.setLayout(layout)
