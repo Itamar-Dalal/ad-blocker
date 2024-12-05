@@ -1,91 +1,28 @@
-from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QHBoxLayout, QWidget, QLineEdit
+from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit, QGridLayout, QHBoxLayout
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtGui import QColor, QIcon, QPixmap
+from styles import Styles
+import client
+from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QGraphicsDropShadowEffect
+from PyQt6.QtGui import QColor, QIcon, QPixmap
+from styles import Styles
 import client
 
-class Styles:
-    WINDOW_WIDTH = 400
-    WINDOW_HEIGTH = 300
-    button_style = """
-        QPushButton {
-            background-color: #3498db;
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 15px;
-            padding: 10px 20px;
-            border: 2px solid #2980b9;
-        }
-        QPushButton:hover {
-            background-color: #2980b9;
-        }
-        QPushButton:pressed {
-            background-color: #1e6f98;
-            border: 2px solid #145374;
-        }
-    """
-    window_title = "DNS AdBlocker"
-    window_background = "background-color: white;"
-    shadow_effect_color = 150, 150, 150, 150
-    title_style = """
-        font-size: 24px;
-        font-weight: bold;
-        color: #2c3e50;
-        padding: 10px;
-    """
-    label_style = """
-        font-size: 16px;
-        font-weight: bold;
-        color: #2c3e50;
-    """
-    input_label_style = """
-        font-size: 18px;
-        font-weight: bold;
-        color: #2c3e50;
-    """
-    input_style = """
-        QLineEdit {
-            font-size: 16px;
-            padding: 8px;
-            border: 2px solid #2980b9;
-            border-radius: 10px;
-            color: black;
-        }
-        QLineEdit:focus {
-            border: 2px solid #3498db;
-        }
-    """
-    error_style = """
-        QLabel {
-            color: red;
-            font-size: 14px;
-            font-weight: bold;
-            white-space: normal;
-        }
-        QLineEdit {
-            border: 2px solid red;
-            background-color: #ffe6e6; /* Light red background for emphasis */
-        }
-    """
-
-    ICON_PATH = r"assets\icons\icon.png"
-    LOGO_PATH = r"assets\images\logo.png"
-    LOGO_WIDTH = 120
-    LOGO_HEIGTH = 120
-
-class MainWindow(QMainWindow):
+class GUI(QMainWindow):
     def __init__(self, c: client.Client):
         super().__init__()
         self.client = c
-        self.setWindowTitle(Styles.window_title)
+        self.setWindowTitle(Styles.WINDOW_TITLE)
         self.setWindowIcon(QIcon(Styles.ICON_PATH))
-        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGTH)
-        self.setStyleSheet(Styles.window_background)
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
+        self.setStyleSheet(Styles.WINDOW_BACKGROUND)
         self.shadow_effect = QGraphicsDropShadowEffect()
-        self.shadow_effect.setBlurRadius(8)
-        self.shadow_effect.setColor(QColor(*Styles.shadow_effect_color))
-        self.shadow_effect.setOffset(2, 2)
+        self.shadow_effect.setBlurRadius(Styles.SHADOW_BLUR_RADIUS)
+        self.shadow_effect.setColor(QColor(*Styles.SHADOW_EFFECT_COLOR))
+        self.shadow_effect.setOffset(*Styles.SHADOW_OFFSET)
 
         self.welcome_window()
 
@@ -96,26 +33,31 @@ class MainWindow(QMainWindow):
 
         title = QLabel("DNS AdBlocker")
         title.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        title.setStyleSheet(Styles.title_style)
+        title.setStyleSheet(Styles.TITLE_STYLE)
         title.setGraphicsEffect(self.shadow_effect)
         layout.addWidget(title)
 
         label = QLabel("DNS-based Ad Blocker Developed By Itamar Dalal")
         label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        label.setStyleSheet(Styles.label_style)
+        label.setStyleSheet(Styles.LABEL_STYLE)
         layout.addWidget(label)
 
         logo_label = QLabel()
         pixmap = QPixmap(Styles.LOGO_PATH)
-        pixmap = pixmap.scaled(Styles.LOGO_WIDTH, Styles.LOGO_HEIGTH, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        pixmap = pixmap.scaled(
+            Styles.LOGO_WIDTH,
+            Styles.LOGO_HEIGHT,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
         logo_label.setPixmap(pixmap)
         logo_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         layout.addWidget(logo_label)
 
-        layout.addSpacing(20)
+        layout.addSpacing(Styles.LAYOUT_SPACING)
 
         button = QPushButton("Connect To A Server")
-        button.setStyleSheet(Styles.button_style)
+        button.setStyleSheet(Styles.BUTTON_STYLE)
         button.clicked.connect(self.connect_to_server_window)
         layout.addWidget(button)
 
@@ -128,22 +70,22 @@ class MainWindow(QMainWindow):
 
         label = QLabel("Connect to A Server")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet(Styles.title_style)
+        label.setStyleSheet(Styles.TITLE_STYLE)
         layout.addWidget(label)
 
         ip_label = QLabel("Server IP:")
         ip_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        ip_label.setStyleSheet(Styles.input_label_style)
+        ip_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
         ip_input = QLineEdit()
         ip_input.setPlaceholderText("Enter server IP")
-        ip_input.setStyleSheet(Styles.input_style)
+        ip_input.setStyleSheet(Styles.INPUT_STYLE)
 
         port_label = QLabel("Server Port:")
         port_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        port_label.setStyleSheet(Styles.input_label_style)
+        port_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
         port_input = QLineEdit()
         port_input.setPlaceholderText("Enter port number")
-        port_input.setStyleSheet(Styles.input_style)
+        port_input.setStyleSheet(Styles.INPUT_STYLE)
 
         ip_layout = QVBoxLayout()
         ip_layout.addWidget(ip_label)
@@ -159,19 +101,97 @@ class MainWindow(QMainWindow):
         layout.addLayout(input_layout)
 
         if error_msg:
-            self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGTH + 13)
+            self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 13)
             error_label = QLabel(error_msg)
             error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-            error_label.setStyleSheet(Styles.error_style)
+            error_label.setStyleSheet(Styles.ERROR_STYLE)
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
 
         back_button = QPushButton("Connect To A Server")
-        back_button.setStyleSheet(Styles.button_style)
+        back_button.setStyleSheet(Styles.BUTTON_STYLE)
         back_button.clicked.connect(lambda: self.client.connect_to_server(ip_input.text(), port_input.text()))
         layout.addWidget(back_button)
 
         central_widget.setLayout(layout)
+
+    def home_window(self):
+        self.setFixedSize(Styles.HOME_WINDOW_WIDTH, Styles.HOME_WINDOW_HEIGHT)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
+        layout.setSpacing(Styles.LAYOUT_SPACING)
+
+        title = QLabel("Welcome to DNS AdBlocker")
+        title.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        title.setStyleSheet(Styles.TITLE_STYLE)
+        shadow_effect = QGraphicsDropShadowEffect()
+        shadow_effect.setBlurRadius(Styles.SHADOW_BLUR_RADIUS)
+        shadow_effect.setColor(QColor(*Styles.SHADOW_COLOR))
+        shadow_effect.setOffset(*Styles.SHADOW_OFFSET)
+        title.setGraphicsEffect(shadow_effect)
+        layout.addWidget(title)
+
+        subtitle = QLabel("Domain Blocking and Management")
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        subtitle.setStyleSheet(Styles.SUBTITLE_STYLE)
+        layout.addWidget(subtitle)
+
+        logo_label = QLabel()
+        pixmap = QPixmap(Styles.LOGO_PATH)
+        pixmap = pixmap.scaled(
+            Styles.LOGO_WIDTH + 20,
+            Styles.LOGO_HEIGHT + 20,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        logo_label.setPixmap(pixmap)
+        logo_label.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(logo_label)
+
+        # Use a QGridLayout to arrange the buttons in a 2D grid
+        grid_layout = QGridLayout()
+        grid_layout.setSpacing(Styles.BUTTON_SPACING)
+
+        buttons = [
+            ("Login", self.home_window),
+            ("Add Domain", self.home_window),
+            ("View History", self.home_window),
+            ("Create Account", self.home_window),
+            ("Delete Domain", self.home_window),
+            ("More Options", self.home_window),
+        ]
+
+        row, col = 0, 0
+        for button_text, callback in buttons:
+            button = QPushButton(button_text)
+            button.setStyleSheet(Styles.BUTTON_STYLE)
+            button.setFixedSize(Styles.BUTTON_WIDTH, Styles.BUTTON_HEIGHT)
+            button.clicked.connect(callback)
+            grid_layout.addWidget(button, row, col)
+
+            col += 1
+            if col > 2:
+                col = 0
+                row += 1
+
+        centered_layout = QHBoxLayout()
+        centered_layout.addStretch()
+        centered_layout.addLayout(grid_layout)
+        centered_layout.addStretch()
+
+        button_widget = QWidget()
+        button_widget.setLayout(centered_layout)
+        button_widget.setContentsMargins(*Styles.BUTTON_MARGINS)
+        layout.addWidget(button_widget)
+
+        footer = QLabel("Developed by Itamar Dalal © 2024-2025")
+        footer.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        footer.setStyleSheet(Styles.FOOTER_STYLE)
+        layout.addWidget(footer)
+
+        central_widget.setLayout(layout)
+
 
 if __name__ == "__main__":
     pass

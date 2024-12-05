@@ -28,7 +28,7 @@ class Client:
                 )
                 return
             
-            # Regular expression to validate IPv4 addresses
+            # Regex to validate IPv4 addresses
             ip_regex = r"^(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\." \
                        r"(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\." \
                        r"(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\." \
@@ -51,19 +51,21 @@ class Client:
 
         return func
 
-
     @verify_args 
     def connect_to_server(self, ip: str, port: str) -> None:
         try:
             self.server = socket(AF_INET, SOCK_STREAM)
+            self.server.settimeout(5)
             self.server.connect((ip, int(port)))
-        except ConnectionRefusedError:
+        except (ConnectionRefusedError, TimeoutError, OSError) as e:
             self.window.connect_to_server_window(
                 f"Cannot find the server. Please enter a different IP or port."
             )
+            return
+        self.window.home_window()
 
     def run(self):
-        self.window = gui.MainWindow(self)
+        self.window = gui.GUI(self)
         self.window.show()
         self.app.exec()
 
