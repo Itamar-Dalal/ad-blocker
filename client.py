@@ -5,6 +5,8 @@ from typing import Callable
 import re
 
 class Client:
+    TIMEOUT = 5
+    
     def __init__(self) -> None:
         """Initialize the Client class."""
         self.app = QApplication([])
@@ -55,7 +57,7 @@ class Client:
     def connect_to_server(self, ip: str, port: str) -> None:
         try:
             self.server = socket(AF_INET, SOCK_STREAM)
-            self.server.settimeout(5)
+            self.server.settimeout(Client.TIMEOUT)
             self.server.connect((ip, int(port)))
         except (ConnectionRefusedError, TimeoutError, OSError) as e:
             self.window.connect_to_server_window(
