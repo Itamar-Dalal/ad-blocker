@@ -22,7 +22,7 @@ class Client:
         """Factory method to create and return a Client instance."""
         return cls()
     
-    def verify_args(call: Callable):
+    def verify_connection_args(call: Callable):
         def func(self, ip: str, port: str):
             if ip == "" or port == "":
                 self.window.connect_to_server_window(
@@ -52,8 +52,29 @@ class Client:
             return call(self, ip, port)
 
         return func
+    
+    def verify_login_args(call: Callable):
+        def func(self, username: str, password: str):
+            pass
+            return call(self, username, password)
+        
+        return func
 
-    @verify_args 
+    def verify_block_domain_args(call: Callable):
+        def func(self, domain: str):
+            pass
+            return call(self, domain)
+
+        return func
+
+    def verify_create_account_args(call: Callable):
+        def func(self, username: str, password: str, email: str):
+            pass
+            return call(self, username, password, email)
+
+        return func
+
+    @verify_connection_args
     def connect_to_server(self, ip: str, port: str) -> None:
         try:
             self.server = socket(AF_INET, SOCK_STREAM)
@@ -65,6 +86,18 @@ class Client:
             )
             return
         self.window.home_window()
+    
+    @verify_login_args
+    def login(self, username: str, password: str) -> None:
+        pass
+
+    @verify_block_domain_args
+    def block_domain(self, domain: str) ->  None:
+        pass
+
+    @verify_create_account_args
+    def create_account(self, username: str, password: str, email: str) -> None:
+        pass
 
     def run(self):
         self.window = gui.GUI(self)
