@@ -1,6 +1,6 @@
 from socket import socket, AF_INET, SOCK_DGRAM, timeout
 from dnslib import DNSRecord, RR, QTYPE, A
-from tcp_by_size import TCPHandler
+from network import TCPHandler
 
 class DNSHandler:
     DNS_RESOLVER_SERVER = "8.8.8.8"  # Google Public DNS

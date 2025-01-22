@@ -3,6 +3,7 @@ import gui
 from socket import socket, AF_INET, SOCK_STREAM
 from typing import Callable
 import re
+from protocol import Protocol, ProtocolOpcodes
 
 class Client:
     TIMEOUT = 5
@@ -12,6 +13,7 @@ class Client:
         self.app = QApplication([])
         self.window = None
         self.server = None
+        self.protocol = Protocol()
 
     def __repr__(self) -> str:
         """Return a string representation of the Client."""
@@ -97,7 +99,23 @@ class Client:
 
     @verify_create_account_args
     def create_account(self, username: str, password: str, email: str) -> None:
-        pass
+        self.protocol.send_create_account(self.server, username, password, email)
+        response = self.protocol.recv_response(self.server)
+        opcode = response[0]
+        match opcode:
+            case ProtocolOpcodes.ACKNOWLEDGMENT.value:
+                pass
+                
+            case _:
+                self.invalid_response(response)
+
+    def invalid_response(self, response: list) -> None:
+        print(f"Invalid response: {" ".join(response)}")
+        self.exit_client()
+    
+    def exit_client(self) -> None:
+        self.app.exit()
+        self.server.close()
 
     def run(self):
         self.window = gui.GUI(self)
