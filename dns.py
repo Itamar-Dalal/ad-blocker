@@ -48,7 +48,7 @@ class DNSHandler:
             response = DNSRecord.parse(response_data)
             return response
         except timeout:
-            print(f"Error: Request to DNS resolver server {self.server} timed out, returning empty response.")
+            print(f"Error: Request to DNS resolver server {self.server} timed out, returning empty response")
             return DNSRecord()
         except Exception as e:
             print(f"Error: {e}")

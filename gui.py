@@ -9,10 +9,16 @@ from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtGui import QColor, QIcon, QPixmap
 from styles import Styles
 import client
+from registry import RegistryHandler
 
 class GUI(QMainWindow):
+    LIGHT_THEME = 0
+    DARK_THEME = 1
+    DEFAULT_THEME = 2
+
     def __init__(self, c: client.Client):
         super().__init__()
+        self.registry_handler = RegistryHandler()
         self.client = c
         self.setWindowTitle(Styles.WINDOW_TITLE)
         self.setWindowIcon(QIcon(Styles.ICON_PATH))
@@ -22,7 +28,7 @@ class GUI(QMainWindow):
         self.shadow_effect.setBlurRadius(Styles.SHADOW_BLUR_RADIUS)
         self.shadow_effect.setColor(QColor(*Styles.SHADOW_EFFECT_COLOR))
         self.shadow_effect.setOffset(*Styles.SHADOW_OFFSET)
-
+        self.update_theme(2)
         self.welcome_window()
 
     def welcome_window(self):
@@ -157,8 +163,8 @@ class GUI(QMainWindow):
             ("Add Domain", self.block_domain_window),
             ("View History", self.home_window),
             ("Create Account", self.create_account_window),
-            ("Delete Domain", self.home_window),
-            ("More Options", self.home_window),
+            ("Delete Domain", self.unblock_domain_window),
+            ("Settings", self.settings_window),
         ]
 
         row, col = 0, 0
@@ -333,7 +339,118 @@ class GUI(QMainWindow):
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
+    
+    def unblock_domain_window(self):
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
 
+        label = QLabel("UnBlock Domain")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(Styles.TITLE_STYLE)
+        layout.addWidget(label)
+
+        domain_label = QLabel("Domain:")
+        domain_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        domain_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
+        domain_input = QLineEdit()
+        domain_input.setPlaceholderText("Enter domain")
+        domain_input.setStyleSheet(Styles.INPUT_STYLE)
+
+        domain_layout = QVBoxLayout()
+        domain_layout.addWidget(domain_label)
+        domain_layout.addWidget(domain_input)
+        layout.addLayout(domain_layout)
+
+        submit_button = QPushButton("UnBlock Domain")
+        submit_button.setStyleSheet(Styles.BUTTON_STYLE)
+        submit_button.clicked.connect(lambda: self.client.add_domain(domain_input.text()))
+        layout.addWidget(submit_button)
+
+        return_button = QPushButton("Return Home")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(lambda: self.home_window())
+        layout.addWidget(return_button)
+
+        central_widget.setLayout(layout)
+
+    def settings_window(self):
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
+
+        label = QLabel("Settings")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(Styles.TITLE_STYLE)
+        layout.addWidget(label)
+
+        change_theme_button = QPushButton("Change Theme")
+        change_theme_button.setStyleSheet(Styles.BUTTON_STYLE)
+        change_theme_button.clicked.connect(lambda: self.change_theme_window())
+        layout.addWidget(change_theme_button)
+
+        return_button = QPushButton("Return Home")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(lambda: self.home_window())
+        layout.addWidget(return_button)
+
+        central_widget.setLayout(layout)
+
+    def change_theme_window(self):
+        self.setFixedSize(Styles.WINDOW_WIDTH + 600, Styles.WINDOW_HEIGHT + 200)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
+
+        label = QLabel("Change Theme")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(Styles.TITLE_STYLE)
+        layout.addWidget(label)
+
+        theme_layout = QHBoxLayout()
+
+        light_mode_button = QPushButton()
+        light_mode_pixmap = QPixmap(Styles.LIGHT_MODE_IMAGE_PATH).scaled(400, 400, Qt.AspectRatioMode.KeepAspectRatio)
+        light_mode_button.setIcon(QIcon(light_mode_pixmap))
+        light_mode_button.setIconSize(light_mode_pixmap.size())
+        light_mode_button.setStyleSheet(Styles.BUTTON_STYLE)
+        light_mode_button.clicked.connect(lambda: self.update_theme(GUI.LIGHT_THEME))
+        theme_layout.addWidget(light_mode_button)
+
+        dark_mode_button = QPushButton()
+        dark_mode_pixmap = QPixmap(Styles.DARK_MODE_IMAGE_PATH).scaled(400, 400, Qt.AspectRatioMode.KeepAspectRatio)
+        dark_mode_button.setIcon(QIcon(dark_mode_pixmap))
+        dark_mode_button.setIconSize(dark_mode_pixmap.size())
+        dark_mode_button.setStyleSheet(Styles.BUTTON_STYLE)
+        dark_mode_button.clicked.connect(lambda: self.update_theme(GUI.DARK_THEME))
+        theme_layout.addWidget(dark_mode_button)
+
+        layout.addLayout(theme_layout)
+
+        return_button = QPushButton("Return To Settings")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(lambda: self.settings_window())
+        layout.addWidget(return_button)
+
+        central_widget.setLayout(layout)
+
+    def update_theme(self, theme):
+        if theme == GUI.LIGHT_THEME:
+            self.registry_handler.change_theme(RegistryHandler.LIGHT_THEME)
+        elif theme == GUI.DARK_THEME:
+            self.registry_handler.change_theme(RegistryHandler.DARK_THEME)
+        elif theme == GUI.DEFAULT_THEME:
+            theme = self.registry_handler.retrieve_theme()
+        else:
+            print("Error in update_theme: Invalid theme value provided")
+            return
+        
+        if theme == RegistryHandler.LIGHT_THEME:
+            self.setStyleSheet(Styles.LIGHT_THEME)
+        elif theme == RegistryHandler.DARK_THEME:
+            self.setStyleSheet(Styles.DARK_THEME)
 
 if __name__ == "__main__":
     pass
