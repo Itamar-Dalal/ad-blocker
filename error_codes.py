@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 
-class Errors(StrEnum):
+class ErrorCodes(StrEnum):
     SERVER_ERROR: str = "1"
     SUBMIT_CODE_BEFORE_GETTING_IT: str = "2"
     INVALID_PASSWORD: str = "3"

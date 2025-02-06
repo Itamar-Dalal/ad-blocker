@@ -217,6 +217,7 @@ class GUI(QMainWindow):
         password_input = QLineEdit()
         password_input.setPlaceholderText("Enter password")
         password_input.setStyleSheet(Styles.INPUT_STYLE)
+        password_input.setEchoMode(QLineEdit.EchoMode.Password)
 
         username_layout = QVBoxLayout()
         username_layout.addWidget(username_label)
@@ -286,8 +287,8 @@ class GUI(QMainWindow):
 
         central_widget.setLayout(layout)
     
-    def create_account_window(self):
-        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
+    def create_account_window(self, error_msg=None):
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.CREATE_USER_WINDOW_HEIGTH + 30 if error_msg else Styles.CREATE_USER_WINDOW_HEIGTH)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -309,7 +310,7 @@ class GUI(QMainWindow):
         password_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
         password_input = QLineEdit()
         password_input.setPlaceholderText("Enter password")
-        password_input.setEchoMode(QLineEdit.Password)
+        password_input.setEchoMode(QLineEdit.EchoMode.Password)
         password_input.setStyleSheet(Styles.INPUT_STYLE)
 
         email_label = QLabel("Email:")
@@ -318,7 +319,7 @@ class GUI(QMainWindow):
         email_input = QLineEdit()
         email_input.setPlaceholderText("Enter email")
         email_input.setStyleSheet(Styles.INPUT_STYLE)
-
+        
         form_layout = QVBoxLayout()
         form_layout.addWidget(username_label)
         form_layout.addWidget(username_input)
@@ -326,6 +327,14 @@ class GUI(QMainWindow):
         form_layout.addWidget(password_input)
         form_layout.addWidget(email_label)
         form_layout.addWidget(email_input)
+
+        if error_msg:
+            error_label = QLabel(error_msg)
+            error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            error_label.setStyleSheet(Styles.ERROR_STYLE)
+            error_label.setWordWrap(True)
+            form_layout.addWidget(error_label)
+
         layout.addLayout(form_layout)
 
         submit_button = QPushButton("Create Account")

@@ -4,10 +4,12 @@ from socket import socket, AF_INET, SOCK_STREAM
 from typing import Callable
 import re
 from protocol import Protocol, ProtocolOpcodes
+from error_codes import ErrorCodes
+from settings import Settings
 
 class Client:
-    TIMEOUT = 5
-    
+    TIMEOUT: int = 5
+
     def __init__(self) -> None:
         """Initialize the Client class."""
         self.app = QApplication([])
@@ -71,9 +73,24 @@ class Client:
 
     def verify_create_account_args(call: Callable):
         def func(self, username: str, password: str, email: str):
-            pass
+            if len(username) < Settings.MIN_USERNAME_LENGTH.value or len(username) > Settings.MAX_USERNAME_LENGTH.value:
+                self.window.create_account_window(
+                    f"Invalid username: \"{username}\". Username must be between {Settings.MIN_USERNAME_LENGTH.value} and {Settings.MAX_USERNAME_LENGTH.value} characters."
+                )
+                return
+            
+            if len(password) < Settings.MIN_PASSWORD_LENGTH.value or len(password) > Settings.MAX_PASSWORD_LENGTH.value:
+                self.window.create_account_window(
+                    f"Invalid password: \"{password}\". Password must be between {Settings.MIN_PASSWORD_LENGTH.value} and {Settings.MAX_PASSWORD_LENGTH.value} characters."
+                )
+                return
+            
+            if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                self.window.create_account_window(
+                    f"Invalid email: \"{email}\". Email must be in format [???@???.???]."
+                )
+                return
             return call(self, username, password, email)
-
         return func
 
     @verify_connection_args
@@ -105,12 +122,28 @@ class Client:
         match opcode:
             case ProtocolOpcodes.ACKNOWLEDGMENT.value:
                 pass
+
+            case ProtocolOpcodes.ERROR.value:
+                error_code = self.handle_error(response)
+                match error_code:
+                    # todo: add error codes
+                    case _:
+                        self.invalid_response(response)
                 
             case _:
                 self.invalid_response(response)
 
+    def handle_error(self, response: list) -> int:
+        print(f'Received Error: {" ".join(response)}')
+
+        if len(response) < 2:
+            self.invalid_response()
+
+        error_code = int(response[1]) # check if it's int
+        return error_code
+        
     def invalid_response(self, response: list) -> None:
-        print(f"Invalid response: {" ".join(response)}")
+        print(f'Invalid response: {" ".join(response)}')
         self.exit_client()
     
     def exit_client(self) -> None:
