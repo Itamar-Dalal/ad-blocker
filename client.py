@@ -85,6 +85,18 @@ class Client:
                 )
                 return
             
+            if not re.search(r"\d", password):
+                self.window.create_account_window(
+                    f"Invalid password: \"{password}\". Password must contain at least one number."
+                )
+                return
+            
+            if not re.search(r"[A-Z]", password):
+                self.window.create_account_window(
+                    f"Invalid password: \"{password}\". Password must contain at least one uppercase letter."
+                )
+                return
+            
             if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
                 self.window.create_account_window(
                     f"Invalid email: \"{email}\". Email must be in format [???@???.???]."
