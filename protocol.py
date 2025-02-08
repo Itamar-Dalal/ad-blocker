@@ -3,9 +3,13 @@ from network import TCPHandler
 from socket import socket
 
 class ProtocolOpcodes(Enum):
-    ACKNOWLEDGMENT = "ACKG"
-    CREATE_USER = "CUSR"
-    ERROR = "ERRO"
+    ACKNOWLEDGMENT: str = "ACKG"
+    CREATE_USER: str = "CUSR"
+    LOGIN: str = "LOGN"
+
+    EMAIL_VERIFICATION_CODE_SENT: str = "EVCS"
+
+    ERROR: str = "ERRO"
 
 class Protocol:
     def __init__(self):
@@ -13,6 +17,9 @@ class Protocol:
 
     def send_create_account(self, sock: socket, username: str, password: str, email: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.CREATE_USER.value}|{username}|{password}|{email}")
+    
+    def send_login(self, sock: socket, username: str, password: str) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.LOGIN.value}|{username}|{password}")
 
     def recv_response(self, sock: socket) -> list:
         response = self.tcp_handler.recv_by_size(sock)

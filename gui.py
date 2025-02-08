@@ -8,15 +8,15 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtGui import QColor, QIcon, QPixmap
 from styles import Styles
-import client
 from registry import RegistryHandler
+from typing import Any
 
 class GUI(QMainWindow):
     LIGHT_THEME = 0
     DARK_THEME = 1
     DEFAULT_THEME = 2
 
-    def __init__(self, c: client.Client):
+    def __init__(self, c: Any) -> None:
         super().__init__()
         self.registry_handler = RegistryHandler()
         self.client = c
@@ -345,6 +345,48 @@ class GUI(QMainWindow):
         return_button = QPushButton("Return Home")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
         return_button.clicked.connect(lambda: self.home_window())
+        layout.addWidget(return_button)
+
+        central_widget.setLayout(layout)
+
+    def email_verification_window(self, error_msg=None):
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
+
+        label = QLabel("Email Verification")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(Styles.TITLE_STYLE)
+        layout.addWidget(label)
+
+        code_label = QLabel("Verification Code:")
+        code_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        code_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
+        code_input = QLineEdit()
+        code_input.setPlaceholderText("Enter verification code")
+        code_input.setStyleSheet(Styles.INPUT_STYLE)
+
+        code_layout = QVBoxLayout()
+        code_layout.addWidget(code_label)
+        code_layout.addWidget(code_input)
+        layout.addLayout(code_layout)
+
+        if error_msg:
+            error_label = QLabel(error_msg)
+            error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            error_label.setStyleSheet(Styles.ERROR_STYLE)
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+
+        submit_button = QPushButton("Submit Code")
+        submit_button.setStyleSheet(Styles.BUTTON_STYLE)
+        submit_button.clicked.connect(lambda: self.client.verify_email(code_input.text()))
+        layout.addWidget(submit_button)
+
+        return_button = QPushButton("Return to Register")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(lambda: self.create_account_window())
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)

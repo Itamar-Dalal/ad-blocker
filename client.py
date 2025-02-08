@@ -46,7 +46,8 @@ class Client:
                     f"Invalid IP: {ip}. IP must be in the format [0-255].[0-255].[0-255].[0-255]."
                 )
                 return
-            # Validate Port
+            
+            # Validate port
             if not port.isnumeric() or not (1 <= int(port) <= 65535):
                 self.window.connect_to_server_window(
                     f"Invalid port: {port}. Port must be a number between 1 and 65535."
@@ -59,26 +60,14 @@ class Client:
     
     def verify_login_args(call: Callable):
         def func(self, username: str, password: str):
-            pass
-            return call(self, username, password)
-        
-        return func
-
-    def verify_block_domain_args(call: Callable):
-        def func(self, domain: str):
-            pass
-            return call(self, domain)
-
-        return func
-
-    def verify_create_account_args(call: Callable):
-        def func(self, username: str, password: str, email: str):
+            # Validate username
             if len(username) < Settings.MIN_USERNAME_LENGTH.value or len(username) > Settings.MAX_USERNAME_LENGTH.value:
                 self.window.create_account_window(
                     f"Invalid username: \"{username}\". Username must be between {Settings.MIN_USERNAME_LENGTH.value} and {Settings.MAX_USERNAME_LENGTH.value} characters."
                 )
                 return
             
+            # Validate password
             if len(password) < Settings.MIN_PASSWORD_LENGTH.value or len(password) > Settings.MAX_PASSWORD_LENGTH.value:
                 self.window.create_account_window(
                     f"Invalid password: \"{password}\". Password must be between {Settings.MIN_PASSWORD_LENGTH.value} and {Settings.MAX_PASSWORD_LENGTH.value} characters."
@@ -97,6 +86,46 @@ class Client:
                 )
                 return
             
+            return call(self, username, password)
+        
+        return func
+
+    def verify_block_domain_args(call: Callable):
+        def func(self, domain: str):
+            pass
+            return call(self, domain)
+
+        return func
+
+    def verify_create_account_args(call: Callable):
+        def func(self, username: str, password: str, email: str):
+            # Validate username
+            if len(username) < Settings.MIN_USERNAME_LENGTH.value or len(username) > Settings.MAX_USERNAME_LENGTH.value:
+                self.window.create_account_window(
+                    f"Invalid username: \"{username}\". Username must be between {Settings.MIN_USERNAME_LENGTH.value} and {Settings.MAX_USERNAME_LENGTH.value} characters."
+                )
+                return
+            
+            # Validate password
+            if len(password) < Settings.MIN_PASSWORD_LENGTH.value or len(password) > Settings.MAX_PASSWORD_LENGTH.value:
+                self.window.create_account_window(
+                    f"Invalid password: \"{password}\". Password must be between {Settings.MIN_PASSWORD_LENGTH.value} and {Settings.MAX_PASSWORD_LENGTH.value} characters."
+                )
+                return
+            
+            if not re.search(r"\d", password):
+                self.window.create_account_window(
+                    f"Invalid password: \"{password}\". Password must contain at least one number."
+                )
+                return
+            
+            if not re.search(r"[A-Z]", password):
+                self.window.create_account_window(
+                    f"Invalid password: \"{password}\". Password must contain at least one uppercase letter."
+                )
+                return
+            
+            # Validate email
             if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
                 self.window.create_account_window(
                     f"Invalid email: \"{email}\". Email must be in format [???@???.???]."
@@ -120,7 +149,24 @@ class Client:
     
     @verify_login_args
     def login(self, username: str, password: str) -> None:
-        pass
+        self.protocol.send_login(self.server, username, password)
+        response = self.protocol.recv_response(self.server)
+        opcode = response[0]
+        match opcode:
+            case ProtocolOpcodes.ACKNOWLEDGMENT.value:
+                pass # add pop up window
+            
+            
+            case ProtocolOpcodes.ERROR.value:
+                error_code = self.handle_error(response)
+                match error_code:
+                    # todo: add error codes
+                    case _:
+                        self.invalid_response(response)
+                
+            case _:
+                self.invalid_response(response)
+            
 
     @verify_block_domain_args
     def block_domain(self, domain: str) ->  None:
@@ -132,8 +178,9 @@ class Client:
         response = self.protocol.recv_response(self.server)
         opcode = response[0]
         match opcode:
-            case ProtocolOpcodes.ACKNOWLEDGMENT.value:
-                pass
+            case ProtocolOpcodes.EMAIL_VERIFICATION_CODE_SENT.value:
+                self.window.email_verification_window()
+                return
 
             case ProtocolOpcodes.ERROR.value:
                 error_code = self.handle_error(response)
@@ -144,6 +191,9 @@ class Client:
                 
             case _:
                 self.invalid_response(response)
+    
+    def verify_email(self, code: str) -> None:
+        pass
 
     def handle_error(self, response: list) -> int:
         print(f'Received Error: {" ".join(response)}')
@@ -151,7 +201,7 @@ class Client:
         if len(response) < 2:
             self.invalid_response()
 
-        error_code = int(response[1]) # check if it's int
+        error_code = int(response[1]) # Check if it's int
         return error_code
         
     def invalid_response(self, response: list) -> None:
