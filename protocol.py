@@ -8,6 +8,7 @@ class ProtocolOpcodes(Enum):
     LOGIN: str = "LOGN"
 
     EMAIL_VERIFICATION_CODE_SENT: str = "EVCS"
+    INVALID_EMAIL_VERIFICATION_CODE: str = "IEVC"
 
     ERROR: str = "ERRO"
 
