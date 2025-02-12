@@ -3,8 +3,7 @@ import gui
 from socket import socket, AF_INET, SOCK_STREAM
 from typing import Callable
 import re
-from protocol import Protocol, ProtocolOpcodes
-from error_codes import ErrorCodes
+from protocol import Protocol, ProtocolOpcodes, ErrorCodes
 from settings import Settings
 
 
@@ -175,7 +174,7 @@ class Client:
     @verify_login_args
     def login(self, username: str, password: str) -> None:
         self.protocol.send_login(self.server, username, password)
-        response = self.protocol.recv_response(self.server)
+        response = self.protocol.recv_data(self.server)
         opcode = response[0]
         match opcode:
             case ProtocolOpcodes.ACKNOWLEDGMENT.value:
@@ -198,7 +197,7 @@ class Client:
     @verify_create_account_args
     def create_account(self, username: str, password: str, email: str) -> None:
         self.protocol.send_create_account(self.server, username, password, email)
-        response = self.protocol.recv_response(self.server)
+        response = self.protocol.recv_data(self.server)
         opcode = response[0]
         match opcode:
             case ProtocolOpcodes.EMAIL_VERIFICATION_CODE_SENT.value:
@@ -218,7 +217,7 @@ class Client:
     @verify_email_verficication_args
     def verify_email(self, code: str) -> None:
         self.protocol.send_verficication_code(self.server, code)
-        response = self.protocol.recv_response(self.server)
+        response = self.protocol.recv_data(self.server)
         opcode = response[0]
         match opcode:
             case ProtocolOpcodes.ACKNOWLEDGMENT.value:
