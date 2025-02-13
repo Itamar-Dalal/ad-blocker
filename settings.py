@@ -6,3 +6,7 @@ class Settings(Enum):
 
     MIN_PASSWORD_LENGTH: int = 5
     MAX_PASSWORD_LENGTH: int = 20
+
+    EMAIL_CODE_LENGTH: int = 6
+    SERVER_EMAIL: str = "dalalcyber@gmail.com"
+    SERVER_EMAIL_PASSWORD: str = "Dllilo05"

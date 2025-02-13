@@ -5,6 +5,10 @@ from socket import socket, AF_INET, SOCK_STREAM, error
 from protocol import Protocol, ProtocolOpcodes, ErrorCodes
 from settings import Settings
 import re
+from random import randrange
+import smtplib, ssl
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 IP = "0.0.0.0"
 PORT = 12345
@@ -60,7 +64,29 @@ class Server:
 
 
         # todo: send email code
+        email_code = Server.send_email_code(email)
+        # self.protocol.() send a message to the client that the email code was sent 
     
+    @staticmethod
+    def send_email_verification_code(receiver_email: str) -> str:
+        code: str = str(randrange(10 ^ Settings.EMAIL_CODE_LENGTH.value, 10 ^ Settings.EMAIL_CODE_LENGTH.value - 1))
+        message = MIMEMultipart("alternative")
+        message["From"] = Settings.SERVER_EMAIL.value
+        message["To"] = receiver_email
+        message["Subject"] = "Code for email verification"
+        text = f"""\
+        Your code for email verification is: {code}
+        """
+        message.attach(MIMEText(text, "plain"))
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+            server.login(Settings.SERVER_EMAIL, Settings.SERVER_EMAIL_PASSWORD)
+            server.sendmail(Settings.SERVER_EMAIL, receiver_email, message.as_string())
+        print(
+            f"Email was successfully sent from {Settings.SERVER_EMAIL} to {receiver_email}"
+        )
+        return code
+
     def invalid_request(self, cli_sock, addr, request: list) -> None:
         print(f"Invalid request received from client at {addr}: {request}")
         self.protocol.send_error(cli_sock, ErrorCodes.INVALID_REQUEST)
