@@ -1,4 +1,4 @@
-from os import argv
+from sys import argv
 from threading import Thread, Semaphore
 import socket
 from socket import socket, AF_INET, SOCK_STREAM, error
@@ -11,7 +11,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 IP = "0.0.0.0"
-PORT = 12345
+PORT = 1234
 
 class Server:
     MAX_CLIENTS = 1000  # Set the maximum number of concurrent clients
@@ -57,15 +57,37 @@ class Server:
         if not Settings.MIN_PASSWORD_LENGTH.value <= len(password) <= Settings.MAX_PASSWORD_LENGTH.value:
             self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD)
             return
+        # todo: add check for password strength (e.g. at least one uppercase letter, one lowercase letter, one digit, one special character)
+
+
+
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             self.protocol.send_error(cli_sock, ErrorCodes.INVALID_EMAIL)
             return
         # todo: check if username or email is already in use in the database
 
 
-        # todo: send email code
-        email_code = Server.send_email_code(email)
-        # self.protocol.() send a message to the client that the email code was sent 
+        email_code = Server.send_email_verification_code(email)
+        self.protocol.send_email_code_sent(cli_sock)
+        response = self.protocol.recv_data(cli_sock)
+        opcode = response[0]
+        match opcode:
+            case ProtocolOpcodes.VERIFICATION_CODE.value:
+                client_code = response[1]
+                if len(client_code) != 6 or not client_code.isnumeric():
+                    self.protocol.send_error(cli_sock, ErrorCodes.INVALID_CODE)
+                    return
+                
+                is_code_correct = (client_code == email_code)
+                self.protocol.send_verification_code_status(cli_sock, is_code_correct)
+                if not is_code_correct:
+                    return
+
+            case _:
+                self.invalid_request(response)
+        
+        # todo: add user to the database
+        print("User registered successfully: ", username, password, email)
     
     @staticmethod
     def send_email_verification_code(receiver_email: str) -> str:
@@ -99,12 +121,13 @@ class Server:
     def run(self):
         """Run the server application."""
         try:
-            print("\nMain thread: starting to accept...")
+            print("Main thread: starting to accept...")
             while True:
                 self.semaphore.acquire()
                 cli_sock, addr = self.srv_sock.accept()
+                print(f"Main thread: accepted connection from {addr}")
                 t: Thread = Thread(
-                    target=Server.handle_client,
+                    target=self.handle_client,
                     args=(cli_sock, addr),
                 )
                 t.start()

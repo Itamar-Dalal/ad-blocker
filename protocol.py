@@ -6,9 +6,12 @@ class ProtocolOpcodes(StrEnum):
     ACKNOWLEDGMENT: str = "ACKG"
     CREATE_USER: str = "CUSR"
     LOGIN: str = "LOGN"
+    VERIFICATION_CODE: str = "VERC"
 
     EMAIL_VERIFICATION_CODE_SENT: str = "EVCS"
     INVALID_EMAIL_VERIFICATION_CODE: str = "IEVC"
+    VERIFICATION_CODE_CORRECT: str = "CDEK"
+    VERIFICATION_CODE_INCORRECT: str = "CDEW"
 
     ERROR: str = "ERRO"
 
@@ -33,11 +36,19 @@ class Protocol:
     def __init__(self):
         self.tcp_handler = TCPHandler()
 
-    def send_create_account(self, sock: socket, username: str, password: str, email: str) -> None:
+    # Client methods
+    def send_create_user(self, sock: socket, username: str, password: str, email: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.CREATE_USER.value}|{username}|{password}|{email}")
     
     def send_login(self, sock: socket, username: str, password: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.LOGIN.value}|{username}|{password}")
+
+    # Server methods
+    def send_email_code_sent(self, sock: socket) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.EMAIL_VERIFICATION_CODE_SENT.value}")
+    
+    def send_verification_code_status(self, sock: socket, is_code_correct: bool) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.VERIFICATION_CODE_CORRECT.value}" if is_code_correct else f"{ProtocolOpcodes.VERIFICATION_CODE_INCORRECT.value}")
 
     def send_error(self, sock: socket, error_code: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ERROR.value}|{error_code}")
@@ -53,4 +64,3 @@ class Protocol:
 
 if __name__ == "__main__":
     protocol = Protocol()
-    #print(protocol.create_account("user", "password", "hi"))

@@ -131,11 +131,11 @@ class Client:
                 )
                 return
 
-            if not re.search(r"[A-Z]", password):
-                self.window.create_account_window(
-                    f'Invalid password: "{password}". Password must contain at least one uppercase letter.'
-                )
-                return
+            #if not re.search(r"[A-Z]", password):
+            #    self.window.create_account_window(
+            #        f'Invalid password: "{password}". Password must contain at least one uppercase letter.'
+            #    )
+            #    return
 
             # Validate email
             if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
@@ -196,7 +196,7 @@ class Client:
 
     @verify_create_account_args
     def create_account(self, username: str, password: str, email: str) -> None:
-        self.protocol.send_create_account(self.server, username, password, email)
+        self.protocol.send_create_user(self.server, username, password, email)
         response = self.protocol.recv_data(self.server)
         opcode = response[0]
         match opcode:
