@@ -1,9 +1,4 @@
-from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit, QGridLayout, QHBoxLayout
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QGraphicsDropShadowEffect
-from PyQt6.QtGui import QColor, QIcon, QPixmap
-from styles import Styles
-from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit
+from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit, QGridLayout, QHBoxLayout, QCheckBox, QToolButton
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect
 from PyQt6.QtGui import QColor, QIcon, QPixmap
@@ -18,7 +13,6 @@ class GUI(QMainWindow):
 
     def __init__(self, c: Any) -> None:
         super().__init__()
-        self.registry_handler = RegistryHandler()
         self.client = c
         self.setWindowTitle(Styles.WINDOW_TITLE)
         self.setWindowIcon(QIcon(Styles.ICON_PATH))
@@ -219,16 +213,22 @@ class GUI(QMainWindow):
         password_input.setStyleSheet(Styles.INPUT_STYLE)
         password_input.setEchoMode(QLineEdit.EchoMode.Password)
 
+        toggle_password_button = QToolButton()
+        toggle_password_button.setIcon(QIcon(Styles.EYE_ICON_PATH))
+        toggle_password_button.setCheckable(True)
+        toggle_password_button.clicked.connect(lambda: self.toggle_password_visibility(password_input, toggle_password_button))
+
+        password_layout = QHBoxLayout()
+        password_layout.addWidget(password_input)
+        password_layout.addWidget(toggle_password_button)
+
         username_layout = QVBoxLayout()
         username_layout.addWidget(username_label)
         username_layout.addWidget(username_input)
 
-        password_layout = QVBoxLayout()
-        password_layout.addWidget(password_label)
-        password_layout.addWidget(password_input)
-
         input_layout = QVBoxLayout()
         input_layout.addLayout(username_layout)
+        input_layout.addWidget(password_label)
         input_layout.addLayout(password_layout)
         layout.addLayout(input_layout)
 
@@ -313,6 +313,15 @@ class GUI(QMainWindow):
         password_input.setEchoMode(QLineEdit.EchoMode.Password)
         password_input.setStyleSheet(Styles.INPUT_STYLE)
 
+        toggle_password_button = QToolButton()
+        toggle_password_button.setIcon(QIcon(Styles.EYE_ICON_PATH))
+        toggle_password_button.setCheckable(True)
+        toggle_password_button.clicked.connect(lambda: self.toggle_password_visibility(password_input, toggle_password_button))
+
+        password_layout = QHBoxLayout()
+        password_layout.addWidget(password_input)
+        password_layout.addWidget(toggle_password_button)
+
         email_label = QLabel("Email:")
         email_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         email_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
@@ -324,7 +333,7 @@ class GUI(QMainWindow):
         form_layout.addWidget(username_label)
         form_layout.addWidget(username_input)
         form_layout.addWidget(password_label)
-        form_layout.addWidget(password_input)
+        form_layout.addLayout(password_layout)
         form_layout.addWidget(email_label)
         form_layout.addWidget(email_input)
 
@@ -489,11 +498,11 @@ class GUI(QMainWindow):
 
     def update_theme(self, theme):
         if theme == GUI.LIGHT_THEME:
-            self.registry_handler.change_theme(RegistryHandler.LIGHT_THEME)
+            RegistryHandler.change_theme(RegistryHandler.LIGHT_THEME)
         elif theme == GUI.DARK_THEME:
-            self.registry_handler.change_theme(RegistryHandler.DARK_THEME)
+            RegistryHandler.change_theme(RegistryHandler.DARK_THEME)
         elif theme == GUI.DEFAULT_THEME:
-            theme = self.registry_handler.retrieve_theme()
+            theme = RegistryHandler.retrieve_theme()
         else:
             print("Error in update_theme: Invalid theme value provided")
             return
@@ -502,6 +511,15 @@ class GUI(QMainWindow):
             self.setStyleSheet(Styles.LIGHT_THEME)
         elif theme == RegistryHandler.DARK_THEME:
             self.setStyleSheet(Styles.DARK_THEME)
+        Styles.update_theme_styles()
+
+    def toggle_password_visibility(self, password_input, button):
+        if button.isChecked():
+            password_input.setEchoMode(QLineEdit.EchoMode.Normal)
+            button.setIcon(QIcon(Styles.EYE_OFF_ICON_PATH))
+        else:
+            password_input.setEchoMode(QLineEdit.EchoMode.Password)
+            button.setIcon(QIcon(Styles.EYE_ICON_PATH))
 
 if __name__ == "__main__":
     pass

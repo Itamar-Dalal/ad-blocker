@@ -164,6 +164,7 @@ class Client:
             self.server = socket(AF_INET, SOCK_STREAM)
             self.server.settimeout(Client.TIMEOUT)
             self.server.connect((ip, int(port)))
+            print(f"Connected to server at {ip}:{port}")
         except (ConnectionRefusedError, TimeoutError, OSError) as e:
             self.window.connect_to_server_window(
                 f"Cannot find the server. Please enter a different IP or port."

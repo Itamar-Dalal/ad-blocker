@@ -1,3 +1,5 @@
+from registry import RegistryHandler
+
 class Styles:
     # Window and Layout Constants
     WINDOW_WIDTH = 400
@@ -39,7 +41,6 @@ class Styles:
     }
     """
 
-
     # Colors and Effects
     SHADOW_EFFECT_COLOR = (150, 150, 150, 150)
     SHADOW_COLOR = (100, 100, 100, 150)
@@ -52,6 +53,8 @@ class Styles:
 
     # File Paths
     ICON_PATH = r"assets\icons\icon.png"
+    EYE_ICON_PATH = r"assets\icons\eye_icon.png"
+    EYE_OFF_ICON_PATH = r"assets\icons\eye_off_icon.png"
     LOGO_PATH = r"assets\images\logo.png"
     LOGO_WITH_BACKGROUND_PATH = r"assets\images\logo_with_background.png"
     LIGHT_MODE_IMAGE_PATH = r"assets\images\light_mode.png"
@@ -78,18 +81,34 @@ class Styles:
         font-weight: bold;
         color: #2c3e50;
     """
-    INPUT_STYLE = """
-        QLineEdit {
-            font-size: 16px;
-            padding: 8px;
-            border: 2px solid #2980b9;
-            border-radius: 10px;
-            color: black;
-        }
-        QLineEdit:focus {
-            border: 2px solid #3498db;
-        }
-    """
+
+    if RegistryHandler.retrieve_theme() == 0:
+        INPUT_STYLE = """
+            QLineEdit {
+                font-size: 16px;
+                padding: 8px;
+                border: 2px solid #2980b9;
+                border-radius: 10px;
+                color: black;
+            }
+            QLineEdit:focus {
+                border: 2px solid #3498db;
+            }
+        """
+    else:
+        INPUT_STYLE = """
+            QLineEdit {
+                font-size: 16px;
+                padding: 8px;
+                border: 2px solid #2980b9;
+                border-radius: 10px;
+                color: white;
+            }
+            QLineEdit:focus {
+                border: 2px solid #3498db;
+            }
+        """
+    
     ERROR_STYLE = """
         QLabel {
             color: red;
@@ -139,3 +158,32 @@ class Styles:
     # Home Window Button Styles
     BUTTON_WIDTH = 200
     BUTTON_HEIGHT = 55
+
+    @staticmethod
+    def update_theme_styles():
+        if RegistryHandler.retrieve_theme() == 0:
+            Styles.INPUT_STYLE = """
+                QLineEdit {
+                    font-size: 16px;
+                    padding: 8px;
+                    border: 2px solid #2980b9;
+                    border-radius: 10px;
+                    color: black;
+                }
+                QLineEdit:focus {
+                    border: 2px solid #3498db;
+                }
+            """
+        else:
+            Styles.INPUT_STYLE = """
+                QLineEdit {
+                    font-size: 16px;
+                    padding: 8px;
+                    border: 2px solid #2980b9;
+                    border-radius: 10px;
+                    color: white;
+                }
+                QLineEdit:focus {
+                    border: 2px solid #3498db;
+                }
+            """
