@@ -6,9 +6,11 @@ from protocol import Protocol, ProtocolOpcodes, ErrorCodes
 from settings import Settings
 import re
 from random import randrange
-import smtplib, ssl
+import smtplib
+from styles import Styles
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.image import MIMEImage
 
 IP = "0.0.0.0"
 PORT = 1234
@@ -52,17 +54,17 @@ class Server:
     def handle_register(self, cli_sock, request: list) -> None:
         username, password, email = request[1:]
         if not Settings.MIN_USERNAME_LENGTH.value <= len(username) <= Settings.MAX_USERNAME_LENGTH.value:
-            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_USERNAME)
+            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_USERNAME.value)
             return
         if not Settings.MIN_PASSWORD_LENGTH.value <= len(password) <= Settings.MAX_PASSWORD_LENGTH.value:
-            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD)
+            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD.value)
             return
         # todo: add check for password strength (e.g. at least one uppercase letter, one lowercase letter, one digit, one special character)
 
 
 
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_EMAIL)
+            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_EMAIL.value)
             return
         # todo: check if username or email is already in use in the database
 
@@ -75,7 +77,7 @@ class Server:
             case ProtocolOpcodes.VERIFICATION_CODE.value:
                 client_code = response[1]
                 if len(client_code) != 6 or not client_code.isnumeric():
-                    self.protocol.send_error(cli_sock, ErrorCodes.INVALID_CODE)
+                    self.protocol.send_error(cli_sock, ErrorCodes.INVALID_CODE.value)
                     return
                 
                 is_code_correct = (client_code == email_code)
@@ -91,27 +93,48 @@ class Server:
     
     @staticmethod
     def send_email_verification_code(receiver_email: str) -> str:
-        code: str = str(randrange(10 ^ Settings.EMAIL_CODE_LENGTH.value, 10 ^ Settings.EMAIL_CODE_LENGTH.value - 1))
+        code: str = str(randrange(pow(10, Settings.EMAIL_CODE_LENGTH.value - 1), pow(10, Settings.EMAIL_CODE_LENGTH.value) - 1))
         message = MIMEMultipart("alternative")
         message["From"] = Settings.SERVER_EMAIL.value
         message["To"] = receiver_email
-        message["Subject"] = "Code for email verification"
+        message["Subject"] = "Email Verification Code - AdBlocker"
+        
         text = f"""\
         Your code for email verification is: {code}
         """
+        
+        html = f"""\
+        <html>
+        <body>
+            <p>Your code for email verification is: <b>{code}</b></p>
+            <img src="cid:logo" width="500" height="500">
+            <br>
+            <i>© 2025 Itamar Dalal</i>
+        </body>
+        </html>
+        """
+        
         message.attach(MIMEText(text, "plain"))
-        context = ssl.create_default_context()
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
-            server.login(Settings.SERVER_EMAIL, Settings.SERVER_EMAIL_PASSWORD)
-            server.sendmail(Settings.SERVER_EMAIL, receiver_email, message.as_string())
+        message.attach(MIMEText(html, "html"))
+
+        with open(Styles.LOGO_WITH_BACKGROUND_PATH, "rb") as img:
+            mime_image = MIMEImage(img.read())
+            mime_image.add_header("Content-ID", "<logo>")
+            message.attach(mime_image)
+
+        with smtplib.SMTP(Settings.SMTP_SERVER.value, Settings.SMTP_PORT.value) as server:
+            server.starttls()
+            server.login(Settings.SERVER_EMAIL.value, Settings.SERVER_EMAIL_PASSWORD.value)
+            server.sendmail(Settings.SERVER_EMAIL.value, receiver_email, message.as_string())
+        
         print(
-            f"Email was successfully sent from {Settings.SERVER_EMAIL} to {receiver_email}"
+            f"Email was successfully sent from {Settings.SERVER_EMAIL.value} to {receiver_email}"
         )
         return code
 
     def invalid_request(self, cli_sock, addr, request: list) -> None:
         print(f"Invalid request received from client at {addr}: {request}")
-        self.protocol.send_error(cli_sock, ErrorCodes.INVALID_REQUEST)
+        self.protocol.send_error(cli_sock, ErrorCodes.INVALID_REQUEST.value)
 
     def close_client_connection(self, cli_sock, addr):
         print(f"Closing connection with client at {addr}...")

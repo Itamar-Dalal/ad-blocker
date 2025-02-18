@@ -53,6 +53,7 @@ class Styles:
     # File Paths
     ICON_PATH = r"assets\icons\icon.png"
     LOGO_PATH = r"assets\images\logo.png"
+    LOGO_WITH_BACKGROUND_PATH = r"assets\images\logo_with_background.png"
     LIGHT_MODE_IMAGE_PATH = r"assets\images\light_mode.png"
     DARK_MODE_IMAGE_PATH = r"assets\images\dark_mode.png"
 

@@ -9,4 +9,6 @@ class Settings(Enum):
 
     EMAIL_CODE_LENGTH: int = 6
     SERVER_EMAIL: str = "dalalcyber@gmail.com"
-    SERVER_EMAIL_PASSWORD: str = "Dllilo05"
+    SERVER_EMAIL_PASSWORD: str = "bgzrldhsppxdjeko"
+    SMTP_SERVER: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587

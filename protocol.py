@@ -34,7 +34,7 @@ class ErrorCodes(StrEnum):
 
 class Protocol:
     def __init__(self):
-        self.tcp_handler = TCPHandler()
+        self.tcp_handler = TCPHandler(True)
 
     # Client methods
     def send_create_user(self, sock: socket, username: str, password: str, email: str) -> None:
@@ -42,6 +42,9 @@ class Protocol:
     
     def send_login(self, sock: socket, username: str, password: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.LOGIN.value}|{username}|{password}")
+    
+    def send_verficication_code(self, sock: socket, code: str) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.VERIFICATION_CODE.value}|{code}")
 
     # Server methods
     def send_email_code_sent(self, sock: socket) -> None:
