@@ -1,6 +1,23 @@
 from winreg import HKEY_CURRENT_USER, CreateKey, SetValueEx, REG_DWORD, KEY_ALL_ACCESS, OpenKey, QueryValueEx
 
 class RegistryHandler:
+    """
+    A handler class for managing registry settings related to the AdBlocker application.
+    Attributes:
+        REGISTRY_PATH (str): The base path in the registry for AdBlocker settings.
+        SETTINGS_PATH (str): The sub-path in the registry for settings.
+        THEME_VALUE_NAME (str): The name of the registry value for the theme setting.
+        LIGHT_THEME (int): The value representing the light theme.
+        DARK_THEME (int): The value representing the dark theme.
+        KEY: The registry key (HKEY_CURRENT_USER).
+    Methods:
+        __init__(): Initializes the RegistryHandler, creates the settings key if it doesn't exist, and sets the default theme.
+        __enter__(): Enters the runtime context related to this object.
+        __exit__(exc_type, exc_val, exc_tb): Exits the runtime context related to this object.
+        change_theme(theme_value: int): Changes the theme setting in the registry.
+        retrieve_theme() -> int: Retrieves the current theme setting from the registry.
+    """
+    
     REGISTRY_PATH = r"Software\AdBlocker"
     SETTINGS_PATH = "settings"
 
