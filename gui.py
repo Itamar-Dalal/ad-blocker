@@ -68,7 +68,7 @@ class GUI(QMainWindow):
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
 
-        label = QLabel("Connect to A Server")
+        label = QLabel("Connect To A Server")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet(Styles.TITLE_STYLE)
         layout.addWidget(label)
