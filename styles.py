@@ -4,9 +4,6 @@ class Styles:
     # Window and Layout Constants
     WINDOW_WIDTH = 400
     WINDOW_HEIGHT = 300
-    HOME_WINDOW_WIDTH = 775
-    HOME_WINDOW_HEIGHT = 500
-    CREATE_USER_WINDOW_HEIGTH = 450
     LAYOUT_SPACING = 20
     BUTTON_SPACING = 35
     BUTTON_MARGINS = (50, 0, 50, 0)
@@ -24,20 +21,20 @@ class Styles:
 
     DARK_THEME = """
     QWidget {
-        background-color: #1A1A2E; /* Dark blue-gray */
-        color: #D1DCE5;           /* Light blue-gray for text */
+        background-color: #2c2f3e;
+        color: #D1DCE5;
     }
     QPushButton {
-        background-color: #2E4A78; /* Medium blue */
-        color: #EAF2FB;            /* Light blue-white for text */
-        border: 1px solid #3D5A91; /* Slightly darker blue for border */
-        border-radius: 5px;        /* Optional: rounded corners */
+        background-color: #2E4A78; 
+        color: #EAF2FB;            
+        border: 1px solid #3D5A91; 
+        border-radius: 5px;        
     }
     QPushButton:hover {
-        background-color: #3D5A91; /* Lighter blue on hover */
+        background-color: #3D5A91;
     }
     QPushButton:pressed {
-        background-color: #233B5E; /* Darker blue on press */
+        background-color: #233B5E;
     }
     """
 
@@ -64,51 +61,21 @@ class Styles:
     LOGO_WIDTH = 120
     LOGO_HEIGHT = 120
 
-    # Font Styles
-    TITLE_STYLE = """
-        font-size: 24px;
-        font-weight: bold;
-        color: #2c3e50;
-        padding: 10px;
-    """
-    LABEL_STYLE = """
-        font-size: 16px;
-        font-weight: bold;
-        color: #2c3e50;
-    """
-    INPUT_LABEL_STYLE = """
-        font-size: 18px;
-        font-weight: bold;
-        color: #2c3e50;
+    TOGGLE_BUTTON_STYLE = """
+        QToolButton {
+            background-color: white;
+            border: 1px solid #cccccc;
+            border-radius: 4px;
+            padding: 2px;
+        }
+        QToolButton:hover {
+            background-color: #f0f0f0;
+        }
+        QToolButton:checked {
+            background-color: #e0e0e0;
+        }
     """
 
-    if RegistryHandler.retrieve_theme() == 0:
-        INPUT_STYLE = """
-            QLineEdit {
-                font-size: 16px;
-                padding: 8px;
-                border: 2px solid #2980b9;
-                border-radius: 10px;
-                color: black;
-            }
-            QLineEdit:focus {
-                border: 2px solid #3498db;
-            }
-        """
-    else:
-        INPUT_STYLE = """
-            QLineEdit {
-                font-size: 16px;
-                padding: 8px;
-                border: 2px solid #2980b9;
-                border-radius: 10px;
-                color: white;
-            }
-            QLineEdit:focus {
-                border: 2px solid #3498db;
-            }
-        """
-    
     ERROR_STYLE = """
         QLabel {
             color: red;
@@ -121,17 +88,7 @@ class Styles:
             background-color: #ffe6e6;
         }
     """
-    FOOTER_STYLE = """
-        font-size: 14px;
-        color: #95a5a6;
-    """
-    SUBTITLE_STYLE = """
-        font-size: 18px;
-        color: #7f8c8d;
-        margin-bottom: 5px;
-    """
 
-    # Button Styles
     BUTTON_STYLE = """
         QPushButton {
             background-color: #3498db;
@@ -150,18 +107,13 @@ class Styles:
             border: 2px solid #145374;
         }
     """
-    
-    # Window Title
     WINDOW_TITLE = "DNS AdBlocker"
-    WINDOW_BACKGROUND = "background-color: white;"
-    
-    # Home Window Button Styles
     BUTTON_WIDTH = 200
     BUTTON_HEIGHT = 55
 
     @staticmethod
     def update_theme_styles():
-        if RegistryHandler.retrieve_theme() == 0:
+        if RegistryHandler.retrieve_theme() == RegistryHandler.LIGHT_THEME:
             Styles.INPUT_STYLE = """
                 QLineEdit {
                     font-size: 16px;
@@ -173,6 +125,31 @@ class Styles:
                 QLineEdit:focus {
                     border: 2px solid #3498db;
                 }
+            """
+            Styles.TITLE_STYLE = """
+                font-size: 24px;
+                font-weight: bold;
+                color: #2c3e50;
+                padding: 10px;
+            """
+            Styles.LABEL_STYLE = """
+                font-size: 16px;
+                font-weight: bold;
+                color: #2c3e50;
+            """
+            Styles.INPUT_LABEL_STYLE = """
+                font-size: 18px;
+                font-weight: bold;
+                color: #2c3e50;
+            """
+            Styles.FOOTER_STYLE = """
+                font-size: 14px;
+                color: #95a5a6;
+            """
+            Styles.SUBTITLE_STYLE = """
+                font-size: 18px;
+                color: #7f8c8d;
+                margin-bottom: 5px;
             """
         else:
             Styles.INPUT_STYLE = """
@@ -186,4 +163,29 @@ class Styles:
                 QLineEdit:focus {
                     border: 2px solid #3498db;
                 }
+            """
+            Styles.TITLE_STYLE = """
+                font-size: 24px;
+                font-weight: bold;
+                color: #e8e8e8;
+                padding: 10px;
+            """
+            Styles.LABEL_STYLE = """
+                font-size: 16px;
+                font-weight: bold;
+                color: #e8e8e8;
+            """
+            Styles.INPUT_LABEL_STYLE = """
+                font-size: 18px;
+                font-weight: bold;
+                color: #e8e8e8;
+            """
+            Styles.FOOTER_STYLE = """
+                font-size: 14px;
+                color: #d1d1d1;
+            """
+            Styles.SUBTITLE_STYLE = """
+                font-size: 18px;
+                color: #c8c8c8;
+                margin-bottom: 5px;
             """

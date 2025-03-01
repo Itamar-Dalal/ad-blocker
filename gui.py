@@ -7,8 +7,8 @@ from registry import RegistryHandler
 from typing import Any
 
 class GUI(QMainWindow):
-    LIGHT_THEME = 0
-    DARK_THEME = 1
+    LIGHT_THEME = RegistryHandler.LIGHT_THEME
+    DARK_THEME = RegistryHandler.DARK_THEME
     DEFAULT_THEME = 2
 
     def __init__(self, c: Any) -> None:
@@ -17,7 +17,6 @@ class GUI(QMainWindow):
         self.setWindowTitle(Styles.WINDOW_TITLE)
         self.setWindowIcon(QIcon(Styles.ICON_PATH))
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
-        self.setStyleSheet(Styles.WINDOW_BACKGROUND)
         self.shadow_effect = QGraphicsDropShadowEffect()
         self.shadow_effect.setBlurRadius(Styles.SHADOW_BLUR_RADIUS)
         self.shadow_effect.setColor(QColor(*Styles.SHADOW_EFFECT_COLOR))
@@ -26,6 +25,7 @@ class GUI(QMainWindow):
         self.welcome_window()
 
     def welcome_window(self):
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -116,7 +116,7 @@ class GUI(QMainWindow):
         central_widget.setLayout(layout)
 
     def home_window(self):
-        self.setFixedSize(Styles.HOME_WINDOW_WIDTH, Styles.HOME_WINDOW_HEIGHT)
+        self.setFixedSize(Styles.WINDOW_WIDTH + 375, Styles.WINDOW_HEIGHT + 200)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -188,7 +188,7 @@ class GUI(QMainWindow):
         central_widget.setLayout(layout)
 
     def login_window(self, error_msg=None):
-        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 150)
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 180 if error_msg else Styles.WINDOW_HEIGHT + 150)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -216,6 +216,7 @@ class GUI(QMainWindow):
         toggle_password_button = QToolButton()
         toggle_password_button.setIcon(QIcon(Styles.EYE_ICON_PATH))
         toggle_password_button.setCheckable(True)
+        toggle_password_button.setStyleSheet(Styles.TOGGLE_BUTTON_STYLE)  # Apply white background style
         toggle_password_button.clicked.connect(lambda: self.toggle_password_visibility(password_input, toggle_password_button))
 
         password_layout = QHBoxLayout()
@@ -233,7 +234,6 @@ class GUI(QMainWindow):
         layout.addLayout(input_layout)
 
         if error_msg:
-            self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 73)
             error_label = QLabel(error_msg)
             error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
             error_label.setStyleSheet(Styles.ERROR_STYLE)
@@ -368,6 +368,7 @@ class GUI(QMainWindow):
         toggle_password_button = QToolButton()
         toggle_password_button.setIcon(QIcon(Styles.EYE_ICON_PATH))
         toggle_password_button.setCheckable(True)
+        toggle_password_button.setStyleSheet(Styles.TOGGLE_BUTTON_STYLE)  # Apply white background style
         toggle_password_button.clicked.connect(lambda: self.toggle_password_visibility(password_input, toggle_password_button))
 
         password_layout = QHBoxLayout()
@@ -425,7 +426,7 @@ class GUI(QMainWindow):
         central_widget.setLayout(layout)
     
     def create_account_window(self, error_msg=None):
-        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.CREATE_USER_WINDOW_HEIGTH + 50 if error_msg else Styles.CREATE_USER_WINDOW_HEIGTH + 20)
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 220 if error_msg else Styles.WINDOW_HEIGHT + 170)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -453,6 +454,7 @@ class GUI(QMainWindow):
         toggle_password_button = QToolButton()
         toggle_password_button.setIcon(QIcon(Styles.EYE_ICON_PATH))
         toggle_password_button.setCheckable(True)
+        toggle_password_button.setStyleSheet(Styles.TOGGLE_BUTTON_STYLE)  # Apply white background style
         toggle_password_button.clicked.connect(lambda: self.toggle_password_visibility(password_input, toggle_password_button))
 
         password_layout = QHBoxLayout()
@@ -654,6 +656,9 @@ class GUI(QMainWindow):
         elif theme == RegistryHandler.DARK_THEME:
             self.setStyleSheet(Styles.DARK_THEME)
         Styles.update_theme_styles()
+
+        if theme != GUI.DEFAULT_THEME:
+            self.change_theme_window()
 
     def toggle_password_visibility(self, password_input, button):
         if button.isChecked():
