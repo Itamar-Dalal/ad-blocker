@@ -45,6 +45,9 @@ class Server:
                 match opcode:
                     case ProtocolOpcodes.CREATE_USER.value:
                         self.handle_register(cli_sock, request)
+                    
+                    case ProtocolOpcodes.FORGOT_PASSWORD.value:
+                        self.handle_forgot_password(cli_sock, request)
 
                     case _:
                         self.invalid_request(request)
@@ -59,17 +62,14 @@ class Server:
         if not Settings.MIN_PASSWORD_LENGTH.value <= len(password) <= Settings.MAX_PASSWORD_LENGTH.value:
             self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD.value)
             return
-        # todo: add check for password strength (e.g. at least one uppercase letter, one lowercase letter, one digit, one special character)
-
-
 
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             self.protocol.send_error(cli_sock, ErrorCodes.INVALID_EMAIL.value)
             return
-        # todo: check if username or email is already in use in the database
+        # TODO: check if username or email is already in use in the database
 
 
-        email_code = Server.send_email_verification_code(email)
+        email_code = Server.send_verification_code(email, True)
         self.protocol.send_email_code_sent(cli_sock)
         response = self.protocol.recv_data(cli_sock)
         opcode = response[0]
@@ -88,20 +88,16 @@ class Server:
             case _:
                 self.invalid_request(response)
         
-        # todo: add user to the database
+        # TODO: add user to the database
         print("User registered successfully: ", username, password, email)
     
     @staticmethod
-    def send_email_verification_code(receiver_email: str) -> str:
+    def send_verification_code(receiver_email: str, to_verify_email: bool) -> str:
         code: str = str(randrange(pow(10, Settings.EMAIL_CODE_LENGTH.value - 1), pow(10, Settings.EMAIL_CODE_LENGTH.value) - 1))
         message = MIMEMultipart("alternative")
         message["From"] = Settings.SERVER_EMAIL.value
         message["To"] = receiver_email
-        message["Subject"] = "Email Verification Code - AdBlocker"
-        
-        text = f"""\
-        Your code for email verification is: {code}
-        """
+        message["Subject"] = "Email Verification Code - AdBlocker" if to_verify_email else "Forgot Password Code - AdBlocker"
         
         html = f"""\
         <html>
@@ -112,11 +108,18 @@ class Server:
             <i>© 2025 Itamar Dalal</i>
         </body>
         </html>
+        """ if to_verify_email else f"""\
+        <html>
+        <body>
+            <p>Your code for password reset is: <b>{code}</b></p>
+            <img src="cid:logo" width="500" height="500">
+            <br>
+            <i>© 2025 Itamar Dalal</i>
+        </body>
+        </html>
         """
         
-        message.attach(MIMEText(text, "plain"))
         message.attach(MIMEText(html, "html"))
-
         with open(Styles.LOGO_WITH_BACKGROUND_PATH, "rb") as img:
             mime_image = MIMEImage(img.read())
             mime_image.add_header("Content-ID", "<logo>")
@@ -132,6 +135,36 @@ class Server:
         )
         return code
 
+    def handle_forgot_password(self, cli_sock, request: list) -> None:
+        email = request[1:]
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_EMAIL.value)
+            return
+        # TODO: check if username or email is already in use in the database
+
+
+        email_code = Server.send_verification_code(email, False)
+        self.protocol.send_forgot_password_code_sent(cli_sock)
+        response = self.protocol.recv_data(cli_sock)
+        opcode = response[0]
+        match opcode:
+            case ProtocolOpcodes.FORGOT_PASSWORD_CODE.value:
+                client_code = response[1]
+                if len(client_code) != 6 or not client_code.isnumeric():
+                    self.protocol.send_error(cli_sock, ErrorCodes.INVALID_CODE.value)
+                    return
+                
+                is_code_correct = (client_code == email_code)
+                self.protocol.send_forgot_password_code_status(cli_sock, is_code_correct)
+                if not is_code_correct:
+                    return
+
+            case _:
+                self.invalid_request(response)
+        
+        # TODO: change password in db
+        print("User successfully changed password")
+    
     def invalid_request(self, cli_sock, addr, request: list) -> None:
         print(f"Invalid request received from client at {addr}: {request}")
         self.protocol.send_error(cli_sock, ErrorCodes.INVALID_REQUEST.value)

@@ -188,7 +188,7 @@ class GUI(QMainWindow):
         central_widget.setLayout(layout)
 
     def login_window(self, error_msg=None):
-        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 50)
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 110)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -240,6 +240,16 @@ class GUI(QMainWindow):
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
 
+        register_button = QPushButton("Don't have an account? Register")
+        register_button.setStyleSheet(Styles.BUTTON_STYLE)
+        register_button.clicked.connect(lambda: self.create_account_window())
+        layout.addWidget(register_button)
+
+        register_button = QPushButton("Forgot your password?")
+        register_button.setStyleSheet(Styles.BUTTON_STYLE)
+        register_button.clicked.connect(lambda: self.forgot_password_window())
+        layout.addWidget(register_button)
+
         submit_button = QPushButton("Login")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
         submit_button.clicked.connect(lambda: self.client.login(username_input.text(), password_input.text()))
@@ -248,6 +258,90 @@ class GUI(QMainWindow):
         return_button = QPushButton("Return Home")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
         return_button.clicked.connect(lambda: self.home_window())
+        layout.addWidget(return_button)
+
+        central_widget.setLayout(layout)
+
+    def forgot_password_window(self, error_msg=None):
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
+
+        label = QLabel("Forgot Password")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(Styles.TITLE_STYLE)
+        layout.addWidget(label)
+
+        email_label = QLabel("Email:")
+        email_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        email_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
+        email_input = QLineEdit()
+        email_input.setPlaceholderText("Enter your email")
+        email_input.setStyleSheet(Styles.INPUT_STYLE)
+
+        email_layout = QVBoxLayout()
+        email_layout.addWidget(email_label)
+        email_layout.addWidget(email_input)
+        layout.addLayout(email_layout)
+
+        if error_msg:
+            error_label = QLabel(error_msg)
+            error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            error_label.setStyleSheet(Styles.ERROR_STYLE)
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+
+        submit_button = QPushButton("Send Code")
+        submit_button.setStyleSheet(Styles.BUTTON_STYLE)
+        submit_button.clicked.connect(lambda: self.client.forgot_password(email_input.text()))
+        layout.addWidget(submit_button)
+
+        return_button = QPushButton("Return to Login")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(lambda: self.login_window())
+        layout.addWidget(return_button)
+
+        central_widget.setLayout(layout)
+    
+    def forgot_password_code_window(self, error_msg=None):
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
+
+        label = QLabel("Forgot Password")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(Styles.TITLE_STYLE)
+        layout.addWidget(label)
+
+        code_label = QLabel("Code:")
+        code_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        code_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
+        email_input = QLineEdit()
+        email_input.setPlaceholderText("Enter verification code")
+        email_input.setStyleSheet(Styles.INPUT_STYLE)
+
+        email_layout = QVBoxLayout()
+        email_layout.addWidget(code_label)
+        email_layout.addWidget(email_input)
+        layout.addLayout(email_layout)
+
+        if error_msg:
+            error_label = QLabel(error_msg)
+            error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            error_label.setStyleSheet(Styles.ERROR_STYLE)
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+
+        submit_button = QPushButton("Submit")
+        submit_button.setStyleSheet(Styles.BUTTON_STYLE)
+        submit_button.clicked.connect(lambda: self.client.forgot_password_code(email_input.text()))
+        layout.addWidget(submit_button)
+
+        return_button = QPushButton("Did not receive a code? Try again")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(lambda: self.forgot_password_window())
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
@@ -393,7 +487,7 @@ class GUI(QMainWindow):
         submit_button.clicked.connect(lambda: self.client.verify_email(code_input.text()))
         layout.addWidget(submit_button)
 
-        return_button = QPushButton("Return to Register")
+        return_button = QPushButton("Did not receive a code? Try again")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
         return_button.clicked.connect(lambda: self.create_account_window())
         layout.addWidget(return_button)

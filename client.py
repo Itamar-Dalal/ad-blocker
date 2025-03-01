@@ -65,7 +65,7 @@ class Client:
                 len(username) < Settings.MIN_USERNAME_LENGTH.value
                 or len(username) > Settings.MAX_USERNAME_LENGTH.value
             ):
-                self.window.create_account_window(
+                self.window.login_window(
                     f'Invalid username: "{username}". Username must be between {Settings.MIN_USERNAME_LENGTH.value} and {Settings.MAX_USERNAME_LENGTH.value} characters.'
                 )
                 return
@@ -75,19 +75,19 @@ class Client:
                 len(password) < Settings.MIN_PASSWORD_LENGTH.value
                 or len(password) > Settings.MAX_PASSWORD_LENGTH.value
             ):
-                self.window.create_account_window(
+                self.window.login_window(
                     f'Invalid password: "{password}". Password must be between {Settings.MIN_PASSWORD_LENGTH.value} and {Settings.MAX_PASSWORD_LENGTH.value} characters.'
                 )
                 return
 
             if not re.search(r"\d", password):
-                self.window.create_account_window(
+                self.window.login_window(
                     f'Invalid password: "{password}". Password must contain at least one number.'
                 )
                 return
 
             #if not re.search(r"[A-Z]", password):
-            #    self.window.create_account_window(
+            #    self.window.login_window(
             #        f'Invalid password: "{password}". Password must contain at least one uppercase letter.'
             #    )
             #    return
@@ -147,7 +147,7 @@ class Client:
 
         return func
 
-    def verify_email_verficication_args(call: Callable):
+    def verify_verficication_args(call: Callable):
         def func(self, code: str):
             if len(code) != 6:
                 self.window.email_verification_window(
@@ -155,6 +155,17 @@ class Client:
                 )
                 return
             return call(self, code)
+
+        return func
+    
+    def verify_forgot_password_args(call: Callable):
+        def func(self, email: str):
+            if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                self.window.forgot_password_window(
+                    f'Invalid email: "{email}". Email must be in format [???@???.???].'
+                )
+                return
+            return call(self, email)
 
         return func
 
@@ -184,7 +195,7 @@ class Client:
             case ProtocolOpcodes.ERROR.value:
                 error_code = self.handle_error(response)
                 match error_code:
-                    # todo: add error codes
+                    # TODO: add error codes
                     case _:
                         self.invalid_response(response)
 
@@ -208,14 +219,14 @@ class Client:
             case ProtocolOpcodes.ERROR.value:
                 error_code = self.handle_error(response)
                 match error_code:
-                    # todo: add error codes
+                    # TODO: add error codes
                     case _:
                         self.invalid_response(response)
 
             case _:
                 self.invalid_response(response)
 
-    @verify_email_verficication_args
+    @verify_verficication_args
     def verify_email(self, code: str) -> None:
         self.protocol.send_verficication_code(self.server, code)
         response = self.protocol.recv_data(self.server)
@@ -223,7 +234,7 @@ class Client:
         match opcode:
             case ProtocolOpcodes.ACKNOWLEDGMENT.value:
                 self.window.home_window()
-                # todo: add pop up window
+                # TODO: add pop up window
                 return
 
             case ProtocolOpcodes.INVALID_EMAIL_VERIFICATION_CODE.value:
@@ -235,12 +246,61 @@ class Client:
             case ProtocolOpcodes.ERROR.value:
                 error_code = self.handle_error(response)
                 match error_code:
-                    # todo: add error codes
+                    # TODO: add error codes
                     case _:
                         self.invalid_response(response)
 
             case _:
                 self.invalid_response(response)
+
+    @verify_forgot_password_args
+    def forgot_password(self, email: str) -> None:
+        self.protocol.send_forgot_password(self.server, email)
+        response = self.protocol.recv_data(self.server)
+        opcode = response[0]
+        match opcode:
+            case ProtocolOpcodes.FORGOT_PASSWORD_CODE_SENT.value:
+                self.window.forgot_password_code_window()
+                return
+            
+            case ProtocolOpcodes.ERROR.value:
+               error_code = self.handle_error(response)
+               match error_code:
+                   # TODO: add error codes
+                   case _:
+                       self.invalid_response(response)
+
+            case _:
+                self.invalid_response(response)
+    
+    @verify_verficication_args
+    def forgot_password_code(self, code: str) -> None:
+        self.protocol.send_forgot_password_code(self.server, code)
+        response = self.protocol.recv_data(self.server)
+        opcode = response[0]
+        match opcode:
+            case ProtocolOpcodes.FORGOT_PASSWORD_CODE_CORRECT.value:
+                self.window.login_window()
+                # TODO: add pop up window
+                return
+            
+            case ProtocolOpcodes.FORGOT_PASSWORD_CODE_INCORRECT.value:
+                self.window.forgot_password_code_window(
+                    f'Invalid verification code: "{code}". Please try again.'
+                )
+                return
+            
+            case ProtocolOpcodes.ERROR.value:
+                error_code = self.handle_error(response)
+                match error_code:
+                    # TODO: add error codes
+                    case _:
+                       self.invalid_response(response)
+
+            case _:
+                self.invalid_response(response)
+            
+
 
     def handle_error(self, response: list) -> int:
         print(f'Received Error: {" ".join(response)}')
