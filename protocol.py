@@ -9,6 +9,7 @@ class ProtocolOpcodes(StrEnum):
     VERIFICATION_CODE: str = "VERC"
     FORGOT_PASSWORD: str = "FPWD"
     FORGOT_PASSWORD_CODE: str = "FPCD"
+    RESET_PASSWORD: str = "RSPW"
 
     EMAIL_VERIFICATION_CODE_SENT: str = "EVCS"
     INVALID_EMAIL_VERIFICATION_CODE: str = "IEVC"
@@ -56,8 +57,14 @@ class Protocol:
 
     def send_forgot_password_code(self, sock: socket, code: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE.value}|{code}")
+    
+    def send_reset_password(self, sock: socket, new_password: str) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.RESET_PASSWORD.value}|{new_password}")
                                                  
     # Server methods
+    def send_acknowledgment(self, sock: socket) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ACKNOWLEDGMENT.value}")
+    
     def send_email_code_sent(self, sock: socket) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.EMAIL_VERIFICATION_CODE_SENT.value}")
     

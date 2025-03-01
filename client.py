@@ -168,6 +168,27 @@ class Client:
             return call(self, email)
 
         return func
+    
+    def verify_reset_password_args(call: Callable):
+        def func(self, password: str):
+            if (
+                len(password) < Settings.MIN_PASSWORD_LENGTH.value
+                or len(password) > Settings.MAX_PASSWORD_LENGTH.value
+            ):
+                self.window.reset_password_window(
+                    f'Invalid password: "{password}". Password must be between {Settings.MIN_PASSWORD_LENGTH.value} and {Settings.MAX_PASSWORD_LENGTH.value} characters.'
+                )
+                return
+
+            if not re.search(r"\d", password):
+                self.window.reset_password_window(
+                    f'Invalid password: "{password}". Password must contain at least one number.'
+                )
+                return
+
+            return call(self, password)
+
+        return func
 
     @verify_connection_args
     def connect_to_server(self, ip: str, port: str) -> None:
@@ -280,8 +301,7 @@ class Client:
         opcode = response[0]
         match opcode:
             case ProtocolOpcodes.FORGOT_PASSWORD_CODE_CORRECT.value:
-                self.window.login_window()
-                # TODO: add pop up window
+                self.window.reset_password_window()
                 return
             
             case ProtocolOpcodes.FORGOT_PASSWORD_CODE_INCORRECT.value:
@@ -299,8 +319,27 @@ class Client:
 
             case _:
                 self.invalid_response(response)
+    
+    @verify_reset_password_args
+    def reset_password(self, password: str) -> None:
+        self.protocol.send_reset_password(self.server, password)
+        response = self.protocol.recv_data(self.server)
+        opcode = response[0]
+        match opcode:
+            case ProtocolOpcodes.ACKNOWLEDGMENT.value:
+                self.window.login_window()
+                # TODO: add pop up window
+                return
             
+            case ProtocolOpcodes.ERROR.value:
+                error_code = self.handle_error(response)
+                match error_code:
+                    # TODO: add error codes
+                    case _:
+                       self.invalid_response(response)
 
+            case _:
+                self.invalid_response(response)
 
     def handle_error(self, response: list) -> int:
         print(f'Received Error: {" ".join(response)}')

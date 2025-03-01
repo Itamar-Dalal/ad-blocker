@@ -188,7 +188,7 @@ class GUI(QMainWindow):
         central_widget.setLayout(layout)
 
     def login_window(self, error_msg=None):
-        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 110)
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 150)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -240,20 +240,20 @@ class GUI(QMainWindow):
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
 
+        submit_button = QPushButton("Login")
+        submit_button.setStyleSheet(Styles.BUTTON_STYLE)
+        submit_button.clicked.connect(lambda: self.client.login(username_input.text(), password_input.text()))
+        layout.addWidget(submit_button)
+        
         register_button = QPushButton("Don't have an account? Register")
         register_button.setStyleSheet(Styles.BUTTON_STYLE)
         register_button.clicked.connect(lambda: self.create_account_window())
         layout.addWidget(register_button)
 
-        register_button = QPushButton("Forgot your password?")
-        register_button.setStyleSheet(Styles.BUTTON_STYLE)
-        register_button.clicked.connect(lambda: self.forgot_password_window())
-        layout.addWidget(register_button)
-
-        submit_button = QPushButton("Login")
-        submit_button.setStyleSheet(Styles.BUTTON_STYLE)
-        submit_button.clicked.connect(lambda: self.client.login(username_input.text(), password_input.text()))
-        layout.addWidget(submit_button)
+        forgot_button = QPushButton("Forgot password? Reset")
+        forgot_button.setStyleSheet(Styles.BUTTON_STYLE)
+        forgot_button.clicked.connect(lambda: self.forgot_password_window())
+        layout.addWidget(forgot_button)
 
         return_button = QPushButton("Return Home")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
@@ -318,14 +318,14 @@ class GUI(QMainWindow):
         code_label = QLabel("Code:")
         code_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         code_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
-        email_input = QLineEdit()
-        email_input.setPlaceholderText("Enter verification code")
-        email_input.setStyleSheet(Styles.INPUT_STYLE)
+        code_input = QLineEdit()
+        code_input.setPlaceholderText("Enter verification code")
+        code_input.setStyleSheet(Styles.INPUT_STYLE)
 
-        email_layout = QVBoxLayout()
-        email_layout.addWidget(code_label)
-        email_layout.addWidget(email_input)
-        layout.addLayout(email_layout)
+        code_layout = QVBoxLayout()
+        code_layout.addWidget(code_label)
+        code_layout.addWidget(code_input)
+        layout.addLayout(code_layout)
 
         if error_msg:
             error_label = QLabel(error_msg)
@@ -336,13 +336,56 @@ class GUI(QMainWindow):
 
         submit_button = QPushButton("Submit")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
-        submit_button.clicked.connect(lambda: self.client.forgot_password_code(email_input.text()))
+        submit_button.clicked.connect(lambda: self.client.forgot_password_code(code_input.text()))
         layout.addWidget(submit_button)
 
-        return_button = QPushButton("Did not receive a code? Try again")
-        return_button.setStyleSheet(Styles.BUTTON_STYLE)
-        return_button.clicked.connect(lambda: self.forgot_password_window())
-        layout.addWidget(return_button)
+        again_button = QPushButton("Didn't received a code? Try again")
+        again_button.setStyleSheet(Styles.BUTTON_STYLE)
+        again_button.clicked.connect(lambda: self.forgot_password_window())
+        layout.addWidget(again_button)
+
+        central_widget.setLayout(layout)
+    
+    def reset_password_window(self, error_msg=None):
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT - 70 if error_msg else Styles.WINDOW_HEIGHT - 90)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
+
+        label = QLabel("Reset Password")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(Styles.TITLE_STYLE)
+        layout.addWidget(label)
+
+        password_label = QLabel("New Password:")
+        password_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        password_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
+        password_input = QLineEdit()
+        password_input.setPlaceholderText("Enter new password")
+        password_input.setStyleSheet(Styles.INPUT_STYLE)
+        password_input.setEchoMode(QLineEdit.EchoMode.Password)
+
+        toggle_password_button = QToolButton()
+        toggle_password_button.setIcon(QIcon(Styles.EYE_ICON_PATH))
+        toggle_password_button.setCheckable(True)
+        toggle_password_button.clicked.connect(lambda: self.toggle_password_visibility(password_input, toggle_password_button))
+
+        password_layout = QHBoxLayout()
+        password_layout.addWidget(password_input)
+        password_layout.addWidget(toggle_password_button)
+        layout.addLayout(password_layout)
+
+        if error_msg:
+            error_label = QLabel(error_msg)
+            error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            error_label.setStyleSheet(Styles.ERROR_STYLE)
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+
+        submit_button = QPushButton("Submit")
+        submit_button.setStyleSheet(Styles.BUTTON_STYLE)
+        submit_button.clicked.connect(lambda: self.client.reset_password(password_input.text()))
+        layout.addWidget(submit_button)
 
         central_widget.setLayout(layout)
     
@@ -382,7 +425,7 @@ class GUI(QMainWindow):
         central_widget.setLayout(layout)
     
     def create_account_window(self, error_msg=None):
-        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.CREATE_USER_WINDOW_HEIGTH + 30 if error_msg else Styles.CREATE_USER_WINDOW_HEIGTH)
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.CREATE_USER_WINDOW_HEIGTH + 50 if error_msg else Styles.CREATE_USER_WINDOW_HEIGTH + 20)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -445,6 +488,11 @@ class GUI(QMainWindow):
         submit_button.clicked.connect(lambda: self.client.create_account(username_input.text(), password_input.text(), email_input.text()))
         layout.addWidget(submit_button)
 
+        login_button = QPushButton("Already have an account? Login")
+        login_button.setStyleSheet(Styles.BUTTON_STYLE)
+        login_button.clicked.connect(lambda: self.login_window())
+        layout.addWidget(login_button)
+
         return_button = QPushButton("Return Home")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
         return_button.clicked.connect(lambda: self.home_window())
@@ -487,7 +535,7 @@ class GUI(QMainWindow):
         submit_button.clicked.connect(lambda: self.client.verify_email(code_input.text()))
         layout.addWidget(submit_button)
 
-        return_button = QPushButton("Did not receive a code? Try again")
+        return_button = QPushButton("Didn't received a code? Try again")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
         return_button.clicked.connect(lambda: self.create_account_window())
         layout.addWidget(return_button)

@@ -84,7 +84,11 @@ class Server:
                 self.protocol.send_verification_code_status(cli_sock, is_code_correct)
                 if not is_code_correct:
                     return
-
+                
+            case ProtocolOpcodes.CREATE_USER.value: # User wants to send another email
+                self.handle_register(cli_sock, response)
+                return
+            
             case _:
                 self.invalid_request(response)
         
@@ -136,7 +140,7 @@ class Server:
         return code
 
     def handle_forgot_password(self, cli_sock, request: list) -> None:
-        email = request[1:]
+        email = request[1]
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             self.protocol.send_error(cli_sock, ErrorCodes.INVALID_EMAIL.value)
             return
@@ -158,12 +162,28 @@ class Server:
                 self.protocol.send_forgot_password_code_status(cli_sock, is_code_correct)
                 if not is_code_correct:
                     return
+            
+            case ProtocolOpcodes.FORGOT_PASSWORD.value: # User wants to send another email
+                self.handle_forgot_password(cli_sock, response)
+                return
 
             case _:
                 self.invalid_request(response)
         
-        # TODO: change password in db
-        print("User successfully changed password")
+        response = self.protocol.recv_data(cli_sock)
+        opcode = response[0]
+        match opcode:
+            case ProtocolOpcodes.RESET_PASSWORD.value:
+                new_password = response[1]
+                if not Settings.MIN_PASSWORD_LENGTH.value <= len(new_password) <= Settings.MAX_PASSWORD_LENGTH.value:
+                    self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD.value)
+                    return
+                # TODO: change password in db
+                print("User successfully changed password")
+                self.protocol.send_acknowledgment(cli_sock)
+            
+            case _:
+                self.invalid_request(response)            
     
     def invalid_request(self, cli_sock, addr, request: list) -> None:
         print(f"Invalid request received from client at {addr}: {request}")
