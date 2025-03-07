@@ -15,7 +15,7 @@ class GUI(QMainWindow):
         super().__init__()
         self.client = c
         self.setWindowTitle(Styles.WINDOW_TITLE)
-        self.setWindowIcon(QIcon(Styles.ICON_PATH))
+        self.setWindowIcon(GUI.get_app_icon())
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
         self.shadow_effect = QGraphicsDropShadowEffect()
         self.shadow_effect.setBlurRadius(Styles.SHADOW_BLUR_RADIUS)
@@ -24,6 +24,15 @@ class GUI(QMainWindow):
         self.update_theme(2)
         self.welcome_window()
 
+    @staticmethod
+    def get_app_icon() -> QIcon:
+        icon = QIcon(Styles.ICON_PATH)
+        if not icon.isNull():
+            return icon
+        else:
+            print(f"Warning: Could not load icon from {Styles.ICON_PATH}")
+            return QIcon()  # Return empty icon as fallback
+    
     def welcome_window(self):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
         central_widget = QWidget()

@@ -5,6 +5,8 @@ from typing import Callable
 import re
 from protocol import Protocol, ProtocolOpcodes, ErrorCodes
 from settings import Settings
+import sys
+import ctypes
 
 
 class Client:
@@ -13,6 +15,10 @@ class Client:
     def __init__(self) -> None:
         """Initialize the Client class."""
         self.app = QApplication([])
+        self.app.setWindowIcon(gui.GUI.get_app_icon())
+        if sys.platform == "win32":
+            myappid = "dnsadblocker.client.v1"
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         self.window = None
         self.server = None
         self.protocol = Protocol()
@@ -147,7 +153,7 @@ class Client:
 
         return func
 
-    def verify_verficication_args(call: Callable):
+    def verify_verification_args(call: Callable):
         def func(self, code: str):
             if len(code) != 6:
                 self.window.email_verification_window(
@@ -249,9 +255,9 @@ class Client:
             case _:
                 self.invalid_response(response)
 
-    @verify_verficication_args
+    @verify_verification_args
     def verify_email(self, code: str) -> None:
-        self.protocol.send_verficication_code(self.server, code)
+        self.protocol.send_verification_code(self.server, code)
         response = self.protocol.recv_data(self.server)
         opcode = response[0]
         match opcode:
@@ -296,7 +302,7 @@ class Client:
             case _:
                 self.invalid_response(response)
     
-    @verify_verficication_args
+    @verify_verification_args
     def forgot_password_code(self, code: str) -> None:
         self.protocol.send_forgot_password_code(self.server, code)
         response = self.protocol.recv_data(self.server)
