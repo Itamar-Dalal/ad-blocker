@@ -48,7 +48,7 @@ class Protocol:
     def send_login(self, sock: socket, username: str, password: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.LOGIN.value}|{username}|{password}")
     
-    def send_verficication_code(self, sock: socket, code: str) -> None:
+    def send_verification_code(self, sock: socket, code: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.VERIFICATION_CODE.value}|{code}")
 
     def send_forgot_password(self, sock: socket, email: str) -> None:

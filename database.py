@@ -107,7 +107,7 @@ class DataBaseHandler:
 
 
 class EmailCodeDBHandler:
-    TIMEOUT = Settings.EMAIL_CODE_TIMEOUT  # 5 minutes
+    TIMEOUT = Settings.EMAIL_CODE_TIMEOUT.value  # 5 minutes
 
     def __init__(self, db_path=Settings.DATABASE_PATH.value) -> None:
         self.db_path = db_path
@@ -144,12 +144,11 @@ class EmailCodeDBHandler:
     def save_email(self, email) -> None:
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            if not self.is_email_exist(email):
-                cursor.execute(
-                    "INSERT INTO emails (email, timeout) VALUES (?, ?)",
-                    (email, time() + EmailCodeDBHandler.TIMEOUT),
-                )
-                conn.commit()
+            cursor.execute(
+                "INSERT OR REPLACE INTO emails (email, timeout) VALUES (?, ?)",
+                (email, time() + EmailCodeDBHandler.TIMEOUT),
+            )
+            conn.commit()
 
     def delete_email(self, email) -> None:
         if self.is_email_exist(email):

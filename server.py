@@ -80,6 +80,7 @@ class Server:
             return
 
         email_code = Server.send_verification_code(email, True)
+        self.email_code_db_handler.save_email(email)
         self.protocol.send_email_code_sent(cli_sock)
         response = self.protocol.recv_data(cli_sock)
         opcode = response[0]
@@ -90,15 +91,25 @@ class Server:
                     self.protocol.send_error(cli_sock, ErrorCodes.INVALID_CODE.value)
                     return
                 
+                if self.email_code_db_handler.is_timeout_passed(email):
+                    self.protocol.send_error(cli_sock, ErrorCodes.CODE_EXPIRED.value)
+                    return
+
                 is_code_correct = (client_code == email_code)
                 self.protocol.send_verification_code_status(cli_sock, is_code_correct)
                 if not is_code_correct:
                     return
+            
+            case ProtocolOpcodes.CREATE_USER.value: # user wants to send another email
+                self.handle_register(cli_sock, addr, response)
+                return
 
             case _:
                 self.invalid_request(cli_sock, addr, response)
+                return
         
         self.db_handler.save_user(username, email, password)
+        self.email_code_db_handler.delete_email(email)
         print("User registered successfully: ", username, password, email)
     
     @staticmethod
@@ -155,6 +166,7 @@ class Server:
             return
 
         email_code = Server.send_verification_code(email, False)
+        self.email_code_db_handler.save_email(email)
         self.protocol.send_forgot_password_code_sent(cli_sock)
         response = self.protocol.recv_data(cli_sock)
         opcode = response[0]
@@ -165,11 +177,19 @@ class Server:
                     self.protocol.send_error(cli_sock, ErrorCodes.INVALID_CODE.value)
                     return
                 
+                if self.email_code_db_handler.is_timeout_passed(email):
+                    self.protocol.send_error(cli_sock, ErrorCodes.CODE_EXPIRED.value)
+                    return
+
                 is_code_correct = (client_code == email_code)
                 self.protocol.send_forgot_password_code_status(cli_sock, is_code_correct)
                 if not is_code_correct:
                     return
-
+            
+            case ProtocolOpcodes.FORGOT_PASSWORD.value: # user wants to send another email
+                self.handle_forgot_password(cli_sock, addr, response)
+                return
+            
             case _:
                 self.invalid_request(cli_sock, addr, response)
         
@@ -183,6 +203,7 @@ class Server:
                     return
                 username = self.db_handler.get_username(email)
                 self.db_handler.update_user_password(username, new_password)
+                self.email_code_db_handler.delete_email(email)
                 print("User successfully changed password")
                 self.protocol.send_acknowledgment(cli_sock)
             

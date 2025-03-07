@@ -8,7 +8,6 @@ from settings import Settings
 import sys
 import ctypes
 
-
 class Client:
     TIMEOUT: int = 5
 
