@@ -12,3 +12,6 @@ class Settings(Enum):
     SERVER_EMAIL_PASSWORD: str = "bgzrldhsppxdjeko"
     SMTP_SERVER: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
+    EMAIL_CODE_TIMEOUT: int = 300  # 5 minutes
+
+    DATABASE_PATH = b"adblocker.db"

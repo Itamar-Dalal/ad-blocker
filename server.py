@@ -7,10 +7,11 @@ from settings import Settings
 import re
 from random import randrange
 import smtplib
-from styles import Styles
+from email.mime.image import MIMEImage
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from email.mime.image import MIMEImage
+from database import DataBaseHandler, EmailCodeDBHandler
+from styles import Styles
 
 IP = "0.0.0.0"
 PORT = 1234
@@ -28,6 +29,8 @@ class Server:
         self.threads = []
         self.semaphore = Semaphore(Server.MAX_CLIENTS)
         self.protocol = Protocol()
+        self.db_handler = DataBaseHandler()
+        self.email_code_db_handler = EmailCodeDBHandler()
 
     def __repr__(self) -> str:
         return f"Server({self.ip}, {self.port})"
@@ -44,17 +47,20 @@ class Server:
                 opcode = request[0]
                 match opcode:
                     case ProtocolOpcodes.CREATE_USER.value:
-                        self.handle_register(cli_sock, request)
-                    
+                        self.handle_register(cli_sock, addr, request)
+
                     case ProtocolOpcodes.FORGOT_PASSWORD.value:
-                        self.handle_forgot_password(cli_sock, request)
+                        self.handle_forgot_password(cli_sock, addr, request)
+                    
+                    case ProtocolOpcodes.LOGIN.value:
+                        self.handle_login(cli_sock, addr, request)
 
                     case _:
-                        self.invalid_request(request)
+                        self.invalid_request(cli_sock, addr, request)
         finally:
             self.close_client_connection(cli_sock, addr)
 
-    def handle_register(self, cli_sock, request: list) -> None:
+    def handle_register(self, cli_sock, addr, request: list) -> None:
         username, password, email = request[1:]
         if not Settings.MIN_USERNAME_LENGTH.value <= len(username) <= Settings.MAX_USERNAME_LENGTH.value:
             self.protocol.send_error(cli_sock, ErrorCodes.INVALID_USERNAME.value)
@@ -66,8 +72,12 @@ class Server:
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             self.protocol.send_error(cli_sock, ErrorCodes.INVALID_EMAIL.value)
             return
-        # TODO: check if username or email is already in use in the database
-
+        if self.db_handler.is_username_exist(username):
+            self.protocol.send_error(cli_sock, ErrorCodes.USERNAME_IN_USE.value)
+            return
+        if self.db_handler.is_email_exist(email):
+            self.protocol.send_error(cli_sock, ErrorCodes.EMAIL_IN_USE.value)
+            return
 
         email_code = Server.send_verification_code(email, True)
         self.protocol.send_email_code_sent(cli_sock)
@@ -84,15 +94,11 @@ class Server:
                 self.protocol.send_verification_code_status(cli_sock, is_code_correct)
                 if not is_code_correct:
                     return
-                
-            case ProtocolOpcodes.CREATE_USER.value: # User wants to send another email
-                self.handle_register(cli_sock, response)
-                return
-            
+
             case _:
-                self.invalid_request(response)
+                self.invalid_request(cli_sock, addr, response)
         
-        # TODO: add user to the database
+        self.db_handler.save_user(username, email, password)
         print("User registered successfully: ", username, password, email)
     
     @staticmethod
@@ -103,7 +109,7 @@ class Server:
         message["To"] = receiver_email
         message["Subject"] = "Email Verification Code - AdBlocker" if to_verify_email else "Forgot Password Code - AdBlocker"
         
-        html = f"""\
+        html = f"""\ 
         <html>
         <body>
             <p>Your code for email verification is: <b>{code}</b></p>
@@ -112,7 +118,7 @@ class Server:
             <i>© 2025 Itamar Dalal</i>
         </body>
         </html>
-        """ if to_verify_email else f"""\
+        """ if to_verify_email else f"""\ 
         <html>
         <body>
             <p>Your code for password reset is: <b>{code}</b></p>
@@ -139,13 +145,14 @@ class Server:
         )
         return code
 
-    def handle_forgot_password(self, cli_sock, request: list) -> None:
+    def handle_forgot_password(self, cli_sock, addr, request: list) -> None:
         email = request[1]
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             self.protocol.send_error(cli_sock, ErrorCodes.INVALID_EMAIL.value)
             return
-        # TODO: check if username or email is already in use in the database
-
+        if not self.db_handler.is_email_exist(email):
+            self.protocol.send_error(cli_sock, ErrorCodes.EMAIL_NOT_EXIST.value)
+            return
 
         email_code = Server.send_verification_code(email, False)
         self.protocol.send_forgot_password_code_sent(cli_sock)
@@ -162,13 +169,9 @@ class Server:
                 self.protocol.send_forgot_password_code_status(cli_sock, is_code_correct)
                 if not is_code_correct:
                     return
-            
-            case ProtocolOpcodes.FORGOT_PASSWORD.value: # User wants to send another email
-                self.handle_forgot_password(cli_sock, response)
-                return
 
             case _:
-                self.invalid_request(response)
+                self.invalid_request(cli_sock, addr, response)
         
         response = self.protocol.recv_data(cli_sock)
         opcode = response[0]
@@ -178,12 +181,24 @@ class Server:
                 if not Settings.MIN_PASSWORD_LENGTH.value <= len(new_password) <= Settings.MAX_PASSWORD_LENGTH.value:
                     self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD.value)
                     return
-                # TODO: change password in db
+                username = self.db_handler.get_username(email)
+                self.db_handler.update_user_password(username, new_password)
                 print("User successfully changed password")
                 self.protocol.send_acknowledgment(cli_sock)
             
             case _:
-                self.invalid_request(response)            
+                self.invalid_request(cli_sock, addr, response)    
+
+    def handle_login(self, cli_sock, addr, request: list) -> None:
+        username, password = request[1:]
+        if not self.db_handler.is_username_exist(username):
+            self.protocol.send_error(cli_sock, ErrorCodes.USERNAME_NOT_EXIST.value)
+            return
+        if not self.db_handler.is_password_ok(username, password):
+            self.protocol.send_error(cli_sock, ErrorCodes.INCORRECT_PASSWORD.value)
+            return
+        self.protocol.send_acknowledgment(cli_sock)
+        print("User logged in successfully: ", username, password)        
     
     def invalid_request(self, cli_sock, addr, request: list) -> None:
         print(f"Invalid request received from client at {addr}: {request}")

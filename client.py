@@ -211,7 +211,9 @@ class Client:
         opcode = response[0]
         match opcode:
             case ProtocolOpcodes.ACKNOWLEDGMENT.value:
-                pass  # add pop up window
+                self.window.home_window()
+                # TODO: add pop up window
+                return
 
             case ProtocolOpcodes.ERROR.value:
                 error_code = self.handle_error(response)
@@ -253,14 +255,14 @@ class Client:
         response = self.protocol.recv_data(self.server)
         opcode = response[0]
         match opcode:
-            case ProtocolOpcodes.ACKNOWLEDGMENT.value:
+            case ProtocolOpcodes.VERIFICATION_CODE_CORRECT.value:
                 self.window.home_window()
                 # TODO: add pop up window
                 return
-
-            case ProtocolOpcodes.INVALID_EMAIL_VERIFICATION_CODE.value:
+            
+            case ProtocolOpcodes.VERIFICATION_CODE_INCORRECT.value:
                 self.window.email_verification_window(
-                    f'Invalid verification code: "{code}". Please try again.'
+                    f'Verification code: "{code}" is incorrect. Please try again.'
                 )
                 return
 
@@ -309,7 +311,7 @@ class Client:
                     f'Invalid verification code: "{code}". Please try again.'
                 )
                 return
-            
+                        
             case ProtocolOpcodes.ERROR.value:
                 error_code = self.handle_error(response)
                 match error_code:
