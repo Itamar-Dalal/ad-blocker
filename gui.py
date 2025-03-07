@@ -42,7 +42,13 @@ class GUI(QMainWindow):
         title = QLabel("DNS AdBlocker")
         title.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         title.setStyleSheet(Styles.TITLE_STYLE)
-        title.setGraphicsEffect(self.shadow_effect)
+        
+        shadow_effect = QGraphicsDropShadowEffect()
+        shadow_effect.setBlurRadius(Styles.SHADOW_BLUR_RADIUS)
+        shadow_effect.setColor(QColor(*Styles.SHADOW_EFFECT_COLOR))
+        shadow_effect.setOffset(*Styles.SHADOW_OFFSET)
+        title.setGraphicsEffect(shadow_effect)
+        
         layout.addWidget(title)
 
         label = QLabel("DNS-based Ad Blocker Developed By Itamar Dalal")
@@ -72,7 +78,7 @@ class GUI(QMainWindow):
         central_widget.setLayout(layout)
 
     def connect_to_server_window(self, error_msg=None):
-        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 50)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -110,7 +116,7 @@ class GUI(QMainWindow):
         layout.addLayout(input_layout)
 
         if error_msg:
-            self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 13)
+            self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 63)
             error_label = QLabel(error_msg)
             error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
             error_label.setStyleSheet(Styles.ERROR_STYLE)
@@ -121,6 +127,11 @@ class GUI(QMainWindow):
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
         submit_button.clicked.connect(lambda: self.client.connect_to_server(ip_input.text(), port_input.text()))
         layout.addWidget(submit_button)
+
+        return_button = QPushButton("Return To Welcome Window")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(lambda: self.welcome_window())
+        layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
 
@@ -225,7 +236,7 @@ class GUI(QMainWindow):
         toggle_password_button = QToolButton()
         toggle_password_button.setIcon(QIcon(Styles.EYE_ICON_PATH))
         toggle_password_button.setCheckable(True)
-        toggle_password_button.setStyleSheet(Styles.TOGGLE_BUTTON_STYLE)  # Apply white background style
+        toggle_password_button.setStyleSheet(Styles.TOGGLE_BUTTON_STYLE)
         toggle_password_button.clicked.connect(lambda: self.toggle_password_visibility(password_input, toggle_password_button))
 
         password_layout = QHBoxLayout()

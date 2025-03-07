@@ -4,7 +4,7 @@ from secrets import token_bytes
 from time import time
 from settings import Settings
 
-class DataBaseHandler:
+class UsersDBHandler:
     SALT_LENGTH = 8
     PEPPER = b"my_secret_pepper"
 
@@ -67,15 +67,15 @@ class DataBaseHandler:
 
             if stored_password:
                 hashed_password = sha256(
-                    password.encode() + stored_salt + DataBaseHandler.PEPPER
+                    password.encode() + stored_salt + UsersDBHandler.PEPPER
                 ).hexdigest()
                 return hashed_password == stored_password
             return False
 
     def save_user(self, username, email, password) -> None:
-        salt = token_bytes(DataBaseHandler.SALT_LENGTH)
+        salt = token_bytes(UsersDBHandler.SALT_LENGTH)
         hashed_password = sha256(
-            password.encode() + salt + DataBaseHandler.PEPPER
+            password.encode() + salt + UsersDBHandler.PEPPER
         ).hexdigest()
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -91,7 +91,7 @@ class DataBaseHandler:
             cursor.execute("SELECT salt FROM users WHERE username=?", (username,))
             stored_salt = cursor.fetchone()[0]
             hashed_password = sha256(
-                new_password.encode() + stored_salt + DataBaseHandler.PEPPER
+                new_password.encode() + stored_salt + UsersDBHandler.PEPPER
             ).hexdigest()
             cursor.execute(
                 "UPDATE users SET password=? WHERE username=?", (hashed_password, username)
@@ -112,6 +112,7 @@ class EmailCodeDBHandler:
     def __init__(self, db_path=Settings.DATABASE_PATH.value) -> None:
         self.db_path = db_path
         self.create_table()
+        self.clean_expired_codes()
 
     def create_table(self):
         with sqlite3.connect(self.db_path) as conn:
@@ -157,10 +158,21 @@ class EmailCodeDBHandler:
                 cursor.execute("DELETE FROM emails WHERE email=?", (email,))
                 conn.commit()
 
+    def clean_expired_codes(self) -> None:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM emails WHERE timeout < ?", (time(),))
+            conn.commit()
+
+    def delete_table(self) -> None:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DROP TABLE IF EXISTS emails")
+            conn.commit()
 
 if __name__ == "__main__":
     # example usage:
-    db_test = DataBaseHandler()
+    db_test = UsersDBHandler()
     """if not db_test.is_username_exist("user1"):
         db_test.save_user("user1", "user1@example.com", "password123")
     print(db_test.is_username_exist("user1"))
@@ -179,3 +191,4 @@ if __name__ == "__main__":
     #email_db_test.save_email("dalalitamar@gmail.com")
     # print(email_db_test.is_timeout_passed("dalalitamar@gmail.com"))
     # email_db_test.delete_email("dalalitamar@gmail.com")
+    # email_db_test.clean_expired_codes()

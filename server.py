@@ -10,8 +10,9 @@ import smtplib
 from email.mime.image import MIMEImage
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from database import DataBaseHandler, EmailCodeDBHandler
+from database import UsersDBHandler, EmailCodeDBHandler
 from styles import Styles
+from time import time
 
 IP = "0.0.0.0"
 PORT = 1234
@@ -29,7 +30,7 @@ class Server:
         self.threads = []
         self.semaphore = Semaphore(Server.MAX_CLIENTS)
         self.protocol = Protocol()
-        self.db_handler = DataBaseHandler()
+        self.db_handler = UsersDBHandler()
         self.email_code_db_handler = EmailCodeDBHandler()
 
     def __repr__(self) -> str:
@@ -92,6 +93,7 @@ class Server:
                     return
                 
                 if self.email_code_db_handler.is_timeout_passed(email):
+                    self.email_code_db_handler.delete_email(email)
                     self.protocol.send_error(cli_sock, ErrorCodes.CODE_EXPIRED.value)
                     return
 
@@ -114,47 +116,58 @@ class Server:
     
     @staticmethod
     def send_verification_code(receiver_email: str, to_verify_email: bool) -> str:
-        code: str = str(randrange(pow(10, Settings.EMAIL_CODE_LENGTH.value - 1), pow(10, Settings.EMAIL_CODE_LENGTH.value) - 1))
-        message = MIMEMultipart("alternative")
-        message["From"] = Settings.SERVER_EMAIL.value
-        message["To"] = receiver_email
-        message["Subject"] = "Email Verification Code - AdBlocker" if to_verify_email else "Forgot Password Code - AdBlocker"
+        try:
+            code_length = Settings.EMAIL_CODE_LENGTH.value
+            code = f"{randrange(10 ** (code_length - 1), (10 ** code_length) - 1):0{code_length}d}"
+            
+            message = MIMEMultipart("alternative")
+            message["From"] = Settings.SERVER_EMAIL.value
+            message["To"] = receiver_email
+            message["Subject"] = ("Email Verification Code - AdBlocker" if to_verify_email 
+                               else "Forgot Password Code - AdBlocker")
         
-        html = f"""\ 
-        <html>
-        <body>
-            <p>Your code for email verification is: <b>{code}</b></p>
-            <img src="cid:logo" width="500" height="500">
-            <br>
-            <i>© 2025 Itamar Dalal</i>
-        </body>
-        </html>
-        """ if to_verify_email else f"""\ 
-        <html>
-        <body>
-            <p>Your code for password reset is: <b>{code}</b></p>
-            <img src="cid:logo" width="500" height="500">
-            <br>
-            <i>© 2025 Itamar Dalal</i>
-        </body>
-        </html>
-        """
-        
-        message.attach(MIMEText(html, "html"))
-        with open(Styles.LOGO_WITH_BACKGROUND_PATH, "rb") as img:
-            mime_image = MIMEImage(img.read())
-            mime_image.add_header("Content-ID", "<logo>")
-            message.attach(mime_image)
-
-        with smtplib.SMTP(Settings.SMTP_SERVER.value, Settings.SMTP_PORT.value) as server:
-            server.starttls()
-            server.login(Settings.SERVER_EMAIL.value, Settings.SERVER_EMAIL_PASSWORD.value)
-            server.sendmail(Settings.SERVER_EMAIL.value, receiver_email, message.as_string())
-        
-        print(
-            f"Email was successfully sent from {Settings.SERVER_EMAIL.value} to {receiver_email}"
-        )
-        return code
+            html = f"""\
+            <html>
+            <body style="text-align: center;">
+                <p style="font-size: 20px; margin: 20px 0;">
+                    Your code for {'email verification' if to_verify_email else 'password reset'} is: <b>{code}</b>
+                </p>
+                <div style="margin: 20px auto; padding: 15px; background-color: #f0f0f0; border-radius: 5px; width: 200px; text-align: center;">
+                    <p style="margin: 0; font-size: 16px;">This code expires in:</p>
+                    <img src="https://i.countdownmail.com/41vs0z.gif?send_time={int(time())}" border="0" alt="countdownmail.com"/>
+                </div>
+                <img src="cid:logo" width="500" height="500" style="display: block; margin: 0 auto;">
+                <br>
+                <i style="display: block;">Developed by Itamar Dalal © 2024-2025</i>
+            </body>
+            </html>
+            """
+            message.attach(MIMEText(html, "html"))
+            
+            with open(Styles.LOGO_WITH_BACKGROUND_PATH, "rb") as img:
+                mime_image = MIMEImage(img.read())
+                mime_image.add_header("Content-ID", "<logo>")
+                mime_image.add_header("Content-Disposition", "inline", filename="logo")
+                message.attach(mime_image)
+            
+            # send email
+            with smtplib.SMTP(Settings.SMTP_SERVER.value, Settings.SMTP_PORT.value) as server:
+                server.starttls()
+                server.login(Settings.SERVER_EMAIL.value, Settings.SERVER_EMAIL_PASSWORD.value)
+                server.sendmail(Settings.SERVER_EMAIL.value, receiver_email, message.as_string())
+            
+            print(f"Email successfully sent from {Settings.SERVER_EMAIL.value} to {receiver_email}")
+            return code
+            
+        except smtplib.SMTPException as e:
+            print(f"Failed to send email: {str(e)}")
+            return None
+        except FileNotFoundError as e:
+            print(f"Logo file not found: {str(e)}")
+            return None
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")
+            return None
 
     def handle_forgot_password(self, cli_sock, addr, request: list) -> None:
         email = request[1]
@@ -178,6 +191,7 @@ class Server:
                     return
                 
                 if self.email_code_db_handler.is_timeout_passed(email):
+                    self.email_code_db_handler.delete_email(email)
                     self.protocol.send_error(cli_sock, ErrorCodes.CODE_EXPIRED.value)
                     return
 
@@ -235,6 +249,7 @@ class Server:
         try:
             print("Main thread: starting to accept...")
             while True:
+                self.email_code_db_handler.clean_expired_codes()
                 self.semaphore.acquire()
                 cli_sock, addr = self.srv_sock.accept()
                 print(f"Main thread: accepted connection from {addr}")
@@ -258,6 +273,7 @@ class Server:
                 except Exception as e:
                     print(f"Error joining thread: {e}")
             self.srv_sock.close()
+            self.email_code_db_handler.delete_table()
 
 if __name__ == "__main__":
     if len(argv) == 3:
