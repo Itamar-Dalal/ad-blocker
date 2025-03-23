@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit, QGridLayout, QHBoxLayout, QCheckBox, QToolButton
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QGraphicsDropShadowEffect
+from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QApplication
 from PyQt6.QtGui import QColor, QIcon, QPixmap
 from styles import Styles
 from registry import RegistryHandler
@@ -174,19 +174,25 @@ class GUI(QMainWindow):
 
         buttons = [
             ("Login", self.login_window),
-            ("Add Domain", self.block_domain_window),
-            ("View History", self.home_window),
+            ("Add Domain", self.block_domain_window, False),
+            ("View History", self.home_window, False),
             ("Create Account", self.create_account_window),
-            ("Delete Domain", self.unblock_domain_window),
+            ("Delete Domain", self.unblock_domain_window, False),
             ("Settings", self.settings_window),
         ]
 
         row, col = 0, 0
-        for button_text, callback in buttons:
+        for button_text, callback, *enabled in buttons:
             button = QPushButton(button_text)
             button.setStyleSheet(Styles.BUTTON_STYLE)
             button.setFixedSize(Styles.BUTTON_WIDTH, Styles.BUTTON_HEIGHT)
-            button.clicked.connect(callback)
+            if enabled and not enabled[0]:
+                button.setEnabled(False)
+                button.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)
+                button.enterEvent = lambda event: QApplication.setOverrideCursor(Qt.CursorShape.ForbiddenCursor)
+                button.leaveEvent = lambda event: QApplication.restoreOverrideCursor()
+            else:
+                button.clicked.connect(callback)
             grid_layout.addWidget(button, row, col)
             row, col = divmod(row * 3 + col + 1, 3)
 

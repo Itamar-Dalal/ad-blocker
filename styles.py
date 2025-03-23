@@ -107,6 +107,19 @@ class Styles:
             border: 2px solid #145374;
         }
     """
+    
+    DISABLED_BUTTON_STYLE = """
+        QPushButton {
+            background-color: #b0b0b0;
+            color: #707070;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 15px;
+            padding: 10px 20px;
+            border: 2px solid #707070;
+        }
+    """
+
     WINDOW_TITLE = "DNS AdBlocker"
     BUTTON_WIDTH = 200
     BUTTON_HEIGHT = 55
