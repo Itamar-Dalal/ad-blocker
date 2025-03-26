@@ -21,6 +21,7 @@ class Client:
         self.window = None
         self.server = None
         self.protocol = Protocol()
+        self.logged_in = False
 
     def __repr__(self) -> str:
         """Return a string representation of the Client."""
@@ -216,6 +217,8 @@ class Client:
         opcode = response[0]
         match opcode:
             case ProtocolOpcodes.ACKNOWLEDGMENT.value:
+                self.logged_in = True
+                self.window.change_logged_in_status(self.logged_in)
                 self.window.home_window()
                 # TODO: add pop up window
                 return

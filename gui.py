@@ -23,6 +23,7 @@ class GUI(QMainWindow):
         self.shadow_effect.setOffset(*Styles.SHADOW_OFFSET)
         self.update_theme(2)
         self.welcome_window()
+        self.logged_in = False
 
     @staticmethod
     def get_app_icon() -> QIcon:
@@ -32,6 +33,9 @@ class GUI(QMainWindow):
         else:
             print(f"Warning: Could not load icon from {Styles.ICON_PATH}")
             return QIcon()  # Return empty icon as fallback
+    
+    def change_logged_in_status(self, logged_in: bool) -> None:
+        self.logged_in = logged_in
     
     def welcome_window(self):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
@@ -173,10 +177,10 @@ class GUI(QMainWindow):
         grid_layout.setSpacing(Styles.BUTTON_SPACING)
 
         buttons = [
-            ("Login", self.login_window),
+            ("Login", self.login_window, True),
             ("Add Domain", self.block_domain_window, False),
             ("View History", self.home_window, False),
-            ("Create Account", self.create_account_window),
+            ("Create Account", self.create_account_window, True),
             ("Delete Domain", self.unblock_domain_window, False),
             ("Settings", self.settings_window),
         ]
@@ -186,7 +190,7 @@ class GUI(QMainWindow):
             button = QPushButton(button_text)
             button.setStyleSheet(Styles.BUTTON_STYLE)
             button.setFixedSize(Styles.BUTTON_WIDTH, Styles.BUTTON_HEIGHT)
-            if enabled and not enabled[0]:
+            if (not self.logged_in and enabled and not enabled[0]) or (self.logged_in and enabled and enabled[0]):
                 button.setEnabled(False)
                 button.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)
                 button.enterEvent = lambda event: QApplication.setOverrideCursor(Qt.CursorShape.ForbiddenCursor)
@@ -480,7 +484,7 @@ class GUI(QMainWindow):
         toggle_password_button = QToolButton()
         toggle_password_button.setIcon(QIcon(Styles.EYE_ICON_PATH))
         toggle_password_button.setCheckable(True)
-        toggle_password_button.setStyleSheet(Styles.TOGGLE_BUTTON_STYLE)  # Apply white background style
+        toggle_password_button.setStyleSheet(Styles.TOGGLE_BUTTON_STYLE)
         toggle_password_button.clicked.connect(lambda: self.toggle_password_visibility(password_input, toggle_password_button))
 
         password_layout = QHBoxLayout()

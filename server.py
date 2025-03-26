@@ -32,6 +32,7 @@ class Server:
         self.protocol = Protocol()
         self.db_handler = UsersDBHandler()
         self.email_code_db_handler = EmailCodeDBHandler()
+        self.logged_in_users = {} # {socket: username}
 
     def __repr__(self) -> str:
         return f"Server({self.ip}, {self.port})"
@@ -233,6 +234,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.INCORRECT_PASSWORD.value)
             return
         self.protocol.send_acknowledgment(cli_sock)
+        self.logged_in_users[cli_sock] = username
         print("User logged in successfully: ", username, password)        
     
     def invalid_request(self, cli_sock, addr, request: list) -> None:
