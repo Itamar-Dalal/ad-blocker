@@ -56,6 +56,9 @@ class Server:
                     
                     case ProtocolOpcodes.LOGIN.value:
                         self.handle_login(cli_sock, addr, request)
+                    
+                    case ProtocolOpcodes.LOGOUT.value:
+                        self.handle_logout(cli_sock, addr)
 
                     case _:
                         self.invalid_request(cli_sock, addr, request)
@@ -235,7 +238,15 @@ class Server:
             return
         self.protocol.send_acknowledgment(cli_sock)
         self.logged_in_users[cli_sock] = username
-        print("User logged in successfully: ", username, password)        
+        print("User logged in successfully: ", username, password)
+
+    def handle_logout(self, cli_sock, addr) -> None:
+        if cli_sock in self.logged_in_users:
+            print("User logged out successfully: ", self.logged_in_users[cli_sock])
+            del self.logged_in_users[cli_sock]
+            self.protocol.send_acknowledgment(cli_sock)
+        else:
+            self.protocol.send_error(cli_sock, ErrorCodes.NOT_LOGGED_IN.value)   
     
     def invalid_request(self, cli_sock, addr, request: list) -> None:
         print(f"Invalid request received from client at {addr}: {request}")

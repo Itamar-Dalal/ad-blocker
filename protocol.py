@@ -6,6 +6,7 @@ class ProtocolOpcodes(StrEnum):
     ACKNOWLEDGMENT: str = "ACKG"
     CREATE_USER: str = "CUSR"
     LOGIN: str = "LOGN"
+    LOGOUT: str = "LOUT"
     VERIFICATION_CODE: str = "VERC"
     FORGOT_PASSWORD: str = "FPWD"
     FORGOT_PASSWORD_CODE: str = "FPCD"
@@ -35,6 +36,7 @@ class ErrorCodes(StrEnum):
     INCORRECT_PASSWORD: str = "12"
     REGISTER_BEFORE_PASSING_EMAIL_VERIFICATION: str = "13"
     CODE_EXPIRED: str = "14"
+    NOT_LOGGED_IN: str = "15"
     
 
 class Protocol:
@@ -48,6 +50,9 @@ class Protocol:
     def send_login(self, sock: socket, username: str, password: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.LOGIN.value}|{username}|{password}")
     
+    def send_logout(self, sock: socket) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.LOGOUT.value}")
+
     def send_verification_code(self, sock: socket, code: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.VERIFICATION_CODE.value}|{code}")
 

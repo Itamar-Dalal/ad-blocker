@@ -232,6 +232,28 @@ class Client:
 
             case _:
                 self.invalid_response(response)
+    
+    def logout(self) -> None:
+        self.protocol.send_logout(self.server)
+        response = self.protocol.recv_data(self.server)
+        opcode = response[0]
+        match opcode:
+            case ProtocolOpcodes.ACKNOWLEDGMENT.value:
+                self.logged_in = False
+                self.window.change_logged_in_status(self.logged_in)
+                self.window.home_window()
+                # TODO: add pop up window
+                return
+
+            case ProtocolOpcodes.ERROR.value:
+                error_code = self.handle_error(response)
+                match error_code:
+                    # TODO: add error codes
+                    case _:
+                        self.invalid_response(response)
+
+            case _:
+                self.invalid_response(response)
 
     @verify_block_domain_args
     def block_domain(self, domain: str) -> None:

@@ -134,7 +134,7 @@ class GUI(QMainWindow):
 
         return_button = QPushButton("Return To Welcome Window")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
-        return_button.clicked.connect(lambda: self.welcome_window())
+        return_button.clicked.connect(self.welcome_window)
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
@@ -277,17 +277,17 @@ class GUI(QMainWindow):
         
         register_button = QPushButton("Don't have an account? Register")
         register_button.setStyleSheet(Styles.BUTTON_STYLE)
-        register_button.clicked.connect(lambda: self.create_account_window())
+        register_button.clicked.connect(self.create_account_window)
         layout.addWidget(register_button)
 
         forgot_button = QPushButton("Forgot password? Reset")
         forgot_button.setStyleSheet(Styles.BUTTON_STYLE)
-        forgot_button.clicked.connect(lambda: self.forgot_password_window())
+        forgot_button.clicked.connect(self.forgot_password_window)
         layout.addWidget(forgot_button)
 
         return_button = QPushButton("Return Home")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
-        return_button.clicked.connect(lambda: self.home_window())
+        return_button.clicked.connect(self.home_window)
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
@@ -329,7 +329,7 @@ class GUI(QMainWindow):
 
         return_button = QPushButton("Return to Login")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
-        return_button.clicked.connect(lambda: self.login_window())
+        return_button.clicked.connect(self.login_window)
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
@@ -340,7 +340,7 @@ class GUI(QMainWindow):
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
 
-        label = QLabel("Forgot Password")
+        label = QLabel("Reset Password")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet(Styles.TITLE_STYLE)
         layout.addWidget(label)
@@ -369,9 +369,9 @@ class GUI(QMainWindow):
         submit_button.clicked.connect(lambda: self.client.forgot_password_code(code_input.text()))
         layout.addWidget(submit_button)
 
-        again_button = QPushButton("Didn't received a code? Try again")
+        again_button = QPushButton("Didn't receive a code? Try again")
         again_button.setStyleSheet(Styles.BUTTON_STYLE)
-        again_button.clicked.connect(lambda: self.forgot_password_window())
+        again_button.clicked.connect(self.forgot_password_window)
         layout.addWidget(again_button)
 
         central_widget.setLayout(layout)
@@ -420,6 +420,48 @@ class GUI(QMainWindow):
 
         central_widget.setLayout(layout)
     
+    def change_password_window(self, error_msg=None):
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
+
+        label = QLabel("Change Password")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(Styles.TITLE_STYLE)
+        layout.addWidget(label)
+
+        email_label = QLabel("Email:")
+        email_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        email_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
+        email_input = QLineEdit()
+        email_input.setPlaceholderText("Enter your email")
+        email_input.setStyleSheet(Styles.INPUT_STYLE)
+
+        email_layout = QVBoxLayout()
+        email_layout.addWidget(email_label)
+        email_layout.addWidget(email_input)
+        layout.addLayout(email_layout)
+
+        if error_msg:
+            error_label = QLabel(error_msg)
+            error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            error_label.setStyleSheet(Styles.ERROR_STYLE)
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+
+        submit_button = QPushButton("Send Code")
+        submit_button.setStyleSheet(Styles.BUTTON_STYLE)
+        submit_button.clicked.connect(lambda: self.client.forgot_password(email_input.text()))
+        layout.addWidget(submit_button)
+
+        return_button = QPushButton("Return to Settings")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(self.settings_window)
+        layout.addWidget(return_button)
+
+        central_widget.setLayout(layout)
+    
     def block_domain_window(self):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
         central_widget = QWidget()
@@ -450,7 +492,7 @@ class GUI(QMainWindow):
 
         return_button = QPushButton("Return Home")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
-        return_button.clicked.connect(lambda: self.home_window())
+        return_button.clicked.connect(self.home_window)
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
@@ -522,12 +564,12 @@ class GUI(QMainWindow):
 
         login_button = QPushButton("Already have an account? Login")
         login_button.setStyleSheet(Styles.BUTTON_STYLE)
-        login_button.clicked.connect(lambda: self.login_window())
+        login_button.clicked.connect(self.login_window)
         layout.addWidget(login_button)
 
         return_button = QPushButton("Return Home")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
-        return_button.clicked.connect(lambda: self.home_window())
+        return_button.clicked.connect(self.home_window)
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
@@ -567,9 +609,9 @@ class GUI(QMainWindow):
         submit_button.clicked.connect(lambda: self.client.verify_email(code_input.text()))
         layout.addWidget(submit_button)
 
-        return_button = QPushButton("Didn't received a code? Try again")
+        return_button = QPushButton("Didn't receive a code? Try again")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
-        return_button.clicked.connect(lambda: self.create_account_window())
+        return_button.clicked.connect(self.create_account_window)
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
@@ -604,7 +646,7 @@ class GUI(QMainWindow):
 
         return_button = QPushButton("Return Home")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
-        return_button.clicked.connect(lambda: self.home_window())
+        return_button.clicked.connect(self.home_window)
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
@@ -625,9 +667,31 @@ class GUI(QMainWindow):
         change_theme_button.clicked.connect(lambda: self.change_theme_window())
         layout.addWidget(change_theme_button)
 
+        logout_button = QPushButton("Logout")
+        logout_button.setStyleSheet(Styles.BUTTON_STYLE)
+        if not self.logged_in:
+            logout_button.setEnabled(False)
+            logout_button.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)
+            logout_button.enterEvent = lambda event: QApplication.setOverrideCursor(Qt.CursorShape.ForbiddenCursor)
+            logout_button.leaveEvent = lambda event: QApplication.restoreOverrideCursor()
+        else:
+            logout_button.clicked.connect(self.client.logout)
+        layout.addWidget(logout_button)
+
+        change_password_button = QPushButton("Change Password")
+        change_password_button.setStyleSheet(Styles.BUTTON_STYLE)
+        if not self.logged_in:
+            change_password_button.setEnabled(False)
+            change_password_button.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)
+            change_password_button.enterEvent = lambda event: QApplication.setOverrideCursor(Qt.CursorShape.ForbiddenCursor)
+            change_password_button.leaveEvent = lambda event: QApplication.restoreOverrideCursor()
+        else:
+            change_password_button.clicked.connect(self.change_password_window)
+        layout.addWidget(change_password_button)
+
         return_button = QPushButton("Return Home")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
-        return_button.clicked.connect(lambda: self.home_window())
+        return_button.clicked.connect(self.home_window)
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
@@ -665,7 +729,7 @@ class GUI(QMainWindow):
 
         return_button = QPushButton("Return To Settings")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
-        return_button.clicked.connect(lambda: self.settings_window())
+        return_button.clicked.connect(self.settings_window)
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
