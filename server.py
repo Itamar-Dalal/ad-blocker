@@ -10,7 +10,7 @@ import smtplib
 from email.mime.image import MIMEImage
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from database import UsersDBHandler, EmailCodeDBHandler
+from database import UsersDBHandler, EmailCodeDBHandler, DomainsDBHandler
 from styles import Styles
 from time import time
 
@@ -32,6 +32,7 @@ class Server:
         self.protocol = Protocol()
         self.db_handler = UsersDBHandler()
         self.email_code_db_handler = EmailCodeDBHandler()
+        self.domains_db_handler = DomainsDBHandler()
         self.logged_in_users = {} # {socket: username}
 
     def __repr__(self) -> str:
@@ -60,8 +61,18 @@ class Server:
                     case ProtocolOpcodes.LOGOUT.value:
                         self.handle_logout(cli_sock, addr)
 
+                    case ProtocolOpcodes.ADD_DOMAIN.value:
+                        self.handle_add_domain(cli_sock, addr, request)
+                    
+                    case ProtocolOpcodes.REMOVE_DOMAIN.value:
+                        self.handle_remove_domain(cli_sock, addr, request)
+
                     case _:
                         self.invalid_request(cli_sock, addr, request)
+                        return
+                    
+        except Exception as e:
+            print(f"Thread for client at {addr} terminated: {e}")
         finally:
             self.close_client_connection(cli_sock, addr)
 
@@ -248,12 +259,44 @@ class Server:
         else:
             self.protocol.send_error(cli_sock, ErrorCodes.NOT_LOGGED_IN.value)   
     
+    def handle_add_domain(self, cli_sock, addr, request: list) -> None:
+        if cli_sock not in self.logged_in_users:
+            self.protocol.send_error(cli_sock, ErrorCodes.NOT_LOGGED_IN.value)
+            return
+        username = self.logged_in_users[cli_sock]
+        domain = request[1]
+        if self.domains_db_handler.is_domain_exist(domain):
+            self.protocol.send_error(cli_sock, ErrorCodes.DOMAIN_IN_USE.value)
+            return
+        self.domains_db_handler.save_domain(domain, username)
+        self.protocol.send_acknowledgment(cli_sock)
+        print(f"Domain '{domain}' added by user '{username}'")
+
+    def handle_remove_domain(self, cli_sock, addr, request: list) -> None:
+        if cli_sock not in self.logged_in_users:
+            self.protocol.send_error(cli_sock, ErrorCodes.NOT_LOGGED_IN.value)
+            return
+        username = self.logged_in_users[cli_sock]
+        domain = request[1]
+        if not self.domains_db_handler.is_domain_exist(domain):
+            self.protocol.send_error(cli_sock, ErrorCodes.DOMAIN_NOT_EXIST.value)
+            return
+        with self.domains_db_handler.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM domains WHERE domain=?", (domain,))
+            conn.commit()
+        self.protocol.send_acknowledgment(cli_sock)
+        print(f"Domain '{domain}' removed by user '{username}'")
+    
     def invalid_request(self, cli_sock, addr, request: list) -> None:
         print(f"Invalid request received from client at {addr}: {request}")
         self.protocol.send_error(cli_sock, ErrorCodes.INVALID_REQUEST.value)
+        self.close_client_connection(cli_sock, addr)
 
     def close_client_connection(self, cli_sock, addr):
         print(f"Closing connection with client at {addr}...")
+        if cli_sock in self.logged_in_users:
+            del self.logged_in_users[cli_sock]
         cli_sock.close()
         self.semaphore.release()
             

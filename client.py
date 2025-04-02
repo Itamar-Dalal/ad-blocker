@@ -104,7 +104,32 @@ class Client:
 
     def verify_block_domain_args(call: Callable):
         def func(self, domain: str):
-            pass
+            # Validate domain
+            if domain == "":
+                self.window.block_domain_window("Domain cannot be empty")
+                return
+            
+            domain_regex = r"^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})+$"
+            if not re.match(domain_regex, domain):
+                self.window.block_domain_window(f"Invalid domain: '{domain}'")
+                return
+
+            return call(self, domain)
+
+        return func
+
+    def verify_unblock_domain_args(call: Callable):
+        def func(self, domain: str):
+            # Validate domain
+            if domain == "":
+                self.window.unblock_domain_window("Domain cannot be empty")
+                return
+            
+            domain_regex = r"^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})+$"
+            if not re.match(domain_regex, domain):
+                self.window.unblock_domain_window(f"Invalid domain: '{domain}'")
+                return
+
             return call(self, domain)
 
         return func
@@ -257,7 +282,49 @@ class Client:
 
     @verify_block_domain_args
     def block_domain(self, domain: str) -> None:
-        pass
+        self.protocol.send_add_domain(self.server, domain)
+        response = self.protocol.recv_data(self.server)
+        opcode = response[0]
+        match opcode:
+            case ProtocolOpcodes.ACKNOWLEDGMENT.value:
+                print(f"Domain '{domain}' successfully added")
+                self.window.home_window()
+                # TODO: Add success popup
+                return
+            case ProtocolOpcodes.ERROR.value:
+                error_code = self.handle_error(response)
+                match error_code:
+                    case ErrorCodes.DOMAIN_IN_USE.value:
+                        self.window.block_domain_window(f"Domain '{domain}' already blocked")
+                    case ErrorCodes.NOT_LOGGED_IN.value:
+                        self.window.block_domain_window("You must be logged in to add a domain")
+                    case _:
+                        self.invalid_response(response)
+            case _:
+                self.invalid_response(response)
+
+    @verify_unblock_domain_args
+    def unblock_domain(self, domain: str) -> None:
+        self.protocol.send_remove_domain(self.server, domain)
+        response = self.protocol.recv_data(self.server)
+        opcode = response[0]
+        match opcode:
+            case ProtocolOpcodes.ACKNOWLEDGMENT.value:
+                print(f"Domain '{domain}' successfully removed")
+                self.window.home_window()
+                # TODO: Add success popup
+                return
+            case ProtocolOpcodes.ERROR.value:
+                error_code = self.handle_error(response)
+                match error_code:
+                    case ErrorCodes.DOMAIN_NOT_EXIST.value:
+                        self.window.unblock_domain_window(f"Domain '{domain}' does not exist")
+                    case ErrorCodes.NOT_LOGGED_IN.value:
+                        self.window.unblock_domain_window("You must be logged in to remove a domain")
+                    case _:
+                        self.invalid_response(response)
+            case _:
+                self.invalid_response(response)
 
     @verify_create_account_args
     def create_account(self, username: str, password: str, email: str) -> None:
@@ -375,11 +442,9 @@ class Client:
 
     def handle_error(self, response: list) -> int:
         print(f'Received Error: {" ".join(response)}')
-
-        if len(response) < 2 or response[1].isnumeric() is False:
-            self.invalid_response()
-
-        error_code = int(response[1])
+        if len(response) < 2 or not response[1].isnumeric():
+            self.invalid_response(response)
+        error_code = response[1]
         return error_code
 
     def invalid_response(self, response: list) -> None:

@@ -462,8 +462,8 @@ class GUI(QMainWindow):
 
         central_widget.setLayout(layout)
     
-    def block_domain_window(self):
-        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
+    def block_domain_window(self, error_msg=None):
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT if not error_msg else Styles.WINDOW_HEIGHT - 10)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -485,9 +485,16 @@ class GUI(QMainWindow):
         domain_layout.addWidget(domain_input)
         layout.addLayout(domain_layout)
 
+        if error_msg:
+            error_label = QLabel(error_msg)
+            error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            error_label.setStyleSheet(Styles.ERROR_STYLE)
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+
         submit_button = QPushButton("Block Domain")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
-        submit_button.clicked.connect(lambda: self.client.add_domain(domain_input.text()))
+        submit_button.clicked.connect(lambda: self.client.block_domain(domain_input.text()))
         layout.addWidget(submit_button)
 
         return_button = QPushButton("Return Home")
@@ -616,8 +623,8 @@ class GUI(QMainWindow):
 
         central_widget.setLayout(layout)
     
-    def unblock_domain_window(self):
-        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
+    def unblock_domain_window(self, error_msg=None):
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT if not error_msg else Styles.WINDOW_HEIGHT - 10)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -639,9 +646,16 @@ class GUI(QMainWindow):
         domain_layout.addWidget(domain_input)
         layout.addLayout(domain_layout)
 
+        if error_msg:
+            error_label = QLabel(error_msg)
+            error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            error_label.setStyleSheet(Styles.ERROR_STYLE)
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+
         submit_button = QPushButton("UnBlock Domain")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
-        submit_button.clicked.connect(lambda: self.client.add_domain(domain_input.text()))
+        submit_button.clicked.connect(lambda: self.client.unblock_domain(domain_input.text()))
         layout.addWidget(submit_button)
 
         return_button = QPushButton("Return Home")

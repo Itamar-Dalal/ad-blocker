@@ -11,6 +11,8 @@ class ProtocolOpcodes(StrEnum):
     FORGOT_PASSWORD: str = "FPWD"
     FORGOT_PASSWORD_CODE: str = "FPCD"
     RESET_PASSWORD: str = "RSPW"
+    ADD_DOMAIN: str = "ADDM"
+    REMOVE_DOMAIN: str = "REMD"
 
     EMAIL_VERIFICATION_CODE_SENT: str = "EVCS"
     VERIFICATION_CODE_CORRECT: str = "CDEK"
@@ -37,6 +39,8 @@ class ErrorCodes(StrEnum):
     REGISTER_BEFORE_PASSING_EMAIL_VERIFICATION: str = "13"
     CODE_EXPIRED: str = "14"
     NOT_LOGGED_IN: str = "15"
+    DOMAIN_IN_USE: str = "16"
+    DOMAIN_NOT_EXIST: str = "17"
     
 
 class Protocol:
@@ -64,6 +68,12 @@ class Protocol:
     
     def send_reset_password(self, sock: socket, new_password: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.RESET_PASSWORD.value}|{new_password}")
+
+    def send_add_domain(self, sock: socket, domain: str) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ADD_DOMAIN.value}|{domain}")
+
+    def send_remove_domain(self, sock: socket, domain: str) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.REMOVE_DOMAIN.value}|{domain}")
                                                  
     # Server methods
     def send_acknowledgment(self, sock: socket) -> None:

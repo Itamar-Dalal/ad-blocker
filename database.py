@@ -170,6 +170,40 @@ class EmailCodeDBHandler:
             cursor.execute("DROP TABLE IF EXISTS emails")
             conn.commit()
 
+class DomainsDBHandler:
+    def __init__(self, db_path=Settings.DATABASE_PATH.value) -> None:
+        self.db_path = db_path
+        self.create_table()
+
+    def create_table(self):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """CREATE TABLE IF NOT EXISTS domains (
+                                    domain TEXT UNIQUE NOT NULL PRIMARY KEY,
+                                    username TEXT NOT NULL,
+                                    time FLOAT NOT NULL)"""
+            )
+            conn.commit()
+
+    def get_connection(self):
+        return sqlite3.connect(self.db_path)
+
+    def save_domain(self, domain, username) -> None:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT OR REPLACE INTO domains (domain, username, time) VALUES (?, ?, ?)",
+                (domain, username, time()),
+            )
+            conn.commit()
+
+    def is_domain_exist(self, domain) -> bool:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM domains WHERE domain=?", (domain,))
+            return cursor.fetchone() is not None
+
 if __name__ == "__main__":
     # example usage:
     db_test = UsersDBHandler()
