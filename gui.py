@@ -181,7 +181,7 @@ class GUI(QMainWindow):
             ("Add Domain", self.block_domain_window, False),
             ("View History", self.home_window, False),
             ("Create Account", self.create_account_window, True),
-            ("Delete Domain", self.unblock_domain_window, False),
+            ("Unblock Domain", self.unblock_domain_window, False),
             ("Settings", self.settings_window),
         ]
 
@@ -629,7 +629,7 @@ class GUI(QMainWindow):
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
 
-        label = QLabel("UnBlock Domain")
+        label = QLabel("Unblock Domain")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet(Styles.TITLE_STYLE)
         layout.addWidget(label)
@@ -653,7 +653,7 @@ class GUI(QMainWindow):
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
 
-        submit_button = QPushButton("UnBlock Domain")
+        submit_button = QPushButton("Unblock Domain")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
         submit_button.clicked.connect(lambda: self.client.unblock_domain(domain_input.text()))
         layout.addWidget(submit_button)
