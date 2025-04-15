@@ -281,10 +281,7 @@ class Server:
         if not self.domains_db_handler.is_domain_exist(domain):
             self.protocol.send_error(cli_sock, ErrorCodes.DOMAIN_NOT_EXIST.value)
             return
-        with self.domains_db_handler.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM domains WHERE domain=?", (domain,))
-            conn.commit()
+        self.domains_db_handler.remove_domain(domain)
         self.protocol.send_acknowledgment(cli_sock)
         print(f"Domain '{domain}' removed by user '{username}'")
     

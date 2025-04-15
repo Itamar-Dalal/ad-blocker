@@ -1,21 +1,26 @@
 from socket import socket, AF_INET, SOCK_DGRAM, timeout
 from dnslib import DNSRecord, RR, QTYPE, A
 from network import TCPHandler
+from database import DomainsDBHandler
+from cachetools import TTLCache
 
 class DNSHandler:
     DNS_RESOLVER_SERVER = "8.8.8.8"  # Google Public DNS
     DNS_PORT = 53
     RESOLVER_TIMEOUT = 3
+    NXDOMAIN = 3  # No such domain
+    CACHE_TTL = 300  # Time-to-live for cache entries in seconds
+    CACHE_MAX_SIZE = 1000  # Maximum number of entries in the cache
 
     def __init__(self) -> None:
-        self.blocked_domains = ["ads.example.com", "ads.com"]
+        self.blocked_domains = DomainsDBHandler().get_domains()
         self.tcp_handler = TCPHandler()
-
         self.server = (DNSHandler.DNS_RESOLVER_SERVER, DNSHandler.DNS_PORT)
         self.sock = socket(AF_INET, SOCK_DGRAM)
         self.sock.connect(self.server)
         print(f"Connected to DNS resolver server: {self.server}")
         self.sock.settimeout(DNSHandler.RESOLVER_TIMEOUT)
+        self.cache = TTLCache(maxsize=DNSHandler.CACHE_MAX_SIZE, ttl=DNSHandler.CACHE_TTL)
 
     def __repr__(self) -> str:
         return "DNSHandler()"
@@ -26,13 +31,21 @@ class DNSHandler:
         domain_name = str(request.q.qname)[:-1]
         print(f"Received DNS request for: {domain_name}")
 
+        # Check if the domain is in the cache
+        if domain_name in self.cache:
+            print(f"Cache hit for domain: {domain_name}")
+            return self.cache[domain_name]
+
         if self.is_blocked_domain(domain_name):
             print(f"Domain {domain_name} is blocked.")
-            return self.create_blocked_response(request, domain_name)
+            response = self.create_blocked_response(request, domain_name)
         else:
             print(f"Domain {domain_name} is not blocked, forwarding request.")
-            response = self.forward_request(data)
-            return response.pack()
+            response = self.forward_request(data).pack()
+
+        # Store the response in the cache
+        self.cache[domain_name] = response
+        return response
 
     def is_blocked_domain(self, domain_name: str) -> bool:
         """Checks if the queried domain is in the blocked list."""
@@ -57,7 +70,7 @@ class DNSHandler:
     def create_blocked_response(self, query: DNSRecord, domain_name: str) -> bytes:
         """Creates a DNS response indicating the domain is blocked."""
         response = query.reply()
-        response.header.rcode = 3  # Set RCODE to NXDOMAIN (3 means No such domain)
+        response.header.rcode = DNSHandler.NXDOMAIN # Set RCODE to NXDOMAIN (3 means No such domain)
         response.add_answer(RR(domain_name, QTYPE.A, rdata=A("0.0.0.0"), ttl=60))
         return response.pack()
 

@@ -197,12 +197,24 @@ class DomainsDBHandler:
                 (domain, username, time()),
             )
             conn.commit()
+    
+    def remove_domain(self, domain) -> None:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM domains WHERE domain=?", (domain,))
+            conn.commit()
 
     def is_domain_exist(self, domain) -> bool:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM domains WHERE domain=?", (domain,))
             return cursor.fetchone() is not None
+    
+    def get_domains(self) -> set:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT domain FROM domains")
+            return set([row[0] for row in cursor.fetchall()])
 
 if __name__ == "__main__":
     # example usage:
@@ -226,3 +238,5 @@ if __name__ == "__main__":
     # print(email_db_test.is_timeout_passed("dalalitamar@gmail.com"))
     # email_db_test.delete_email("dalalitamar@gmail.com")
     # email_db_test.clean_expired_codes()
+    #domain_db = DomainsDBHandler()
+    #print(domain_db.get_domains())
