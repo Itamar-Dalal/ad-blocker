@@ -9,8 +9,8 @@ class DNSHandler:
     DNS_PORT = 53
     RESOLVER_TIMEOUT = 3
     NXDOMAIN = 3  # No such domain
-    CACHE_TTL = 300  # Time-to-live for cache entries in seconds
-    CACHE_MAX_SIZE = 1000  # Maximum number of entries in the cache
+    CACHE_TTL = 300  # Cache TTL in seconds
+    CACHE_MAX_SIZE = 1000
 
     def __init__(self) -> None:
         self.blocked_domains = DomainsDBHandler().get_domains()
@@ -30,8 +30,7 @@ class DNSHandler:
         request = DNSRecord.parse(data)
         domain_name = str(request.q.qname)[:-1]
         print(f"Received DNS request for: {domain_name}")
-
-        # Check if the domain is in the cache
+        
         if domain_name in self.cache:
             print(f"Cache hit for domain: {domain_name}")
             return self.cache[domain_name]
@@ -42,7 +41,6 @@ class DNSHandler:
         else:
             print(f"Domain {domain_name} is not blocked, forwarding request.")
             response = self.forward_request(data).pack()
-
         # Store the response in the cache
         self.cache[domain_name] = response
         return response

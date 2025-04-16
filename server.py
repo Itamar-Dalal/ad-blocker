@@ -1,7 +1,7 @@
 from sys import argv
 from threading import Thread, Semaphore
 import socket
-from socket import socket, AF_INET, SOCK_STREAM, error
+from socket import socket, AF_INET, SOCK_STREAM, error, gaierror, gethostbyname
 from protocol import Protocol, ProtocolOpcodes, ErrorCodes
 from settings import Settings
 import re
@@ -265,6 +265,9 @@ class Server:
             return
         username = self.logged_in_users[cli_sock]
         domain = request[1]
+        if not Server.is_valid_domain(domain):
+            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_DOMAIN.value)
+            return
         if self.domains_db_handler.is_domain_exist(domain):
             self.protocol.send_error(cli_sock, ErrorCodes.DOMAIN_IN_USE.value)
             return
@@ -278,12 +281,30 @@ class Server:
             return
         username = self.logged_in_users[cli_sock]
         domain = request[1]
+        if not Server.is_valid_domain(domain):
+            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_DOMAIN.value)
+            return
         if not self.domains_db_handler.is_domain_exist(domain):
             self.protocol.send_error(cli_sock, ErrorCodes.DOMAIN_NOT_EXIST.value)
             return
         self.domains_db_handler.remove_domain(domain)
         self.protocol.send_acknowledgment(cli_sock)
         print(f"Domain '{domain}' removed by user '{username}'")
+    
+    @staticmethod
+    def is_valid_domain(domain) -> bool:
+        """Check if the domain is valid and exists."""
+        if not Settings.MIN_DOMAIN_LENGTH.value <= len(domain) <= Settings.MAX_DOMAIN_LENGTH.value:
+            return False
+        domain_regex = r"^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})+$"
+        if not re.match(domain_regex, domain):
+            return False
+        # Check if the domain resolves to an IP address
+        try:
+            gethostbyname(domain)
+        except gaierror:
+            return False
+        return True
     
     def invalid_request(self, cli_sock, addr, request: list) -> None:
         print(f"Invalid request received from client at {addr}: {request}")

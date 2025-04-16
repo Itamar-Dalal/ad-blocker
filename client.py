@@ -105,10 +105,9 @@ class Client:
     def verify_block_domain_args(call: Callable):
         def func(self, domain: str):
             # Validate domain
-            if domain == "":
-                self.window.block_domain_window("Domain cannot be empty")
+            if not Settings.MIN_DOMAIN_LENGTH.value <= len(domain) <= Settings.MAX_DOMAIN_LENGTH.value:
+                self.window.block_domain_window(f"Domain Should be between {Settings.MIN_DOMAIN_LENGTH} and {Settings.MAX_DOMAIN_LENGTH} characters")
                 return
-            
             domain_regex = r"^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})+$"
             if not re.match(domain_regex, domain):
                 self.window.block_domain_window(f"Invalid domain: '{domain}'")
@@ -121,8 +120,8 @@ class Client:
     def verify_unblock_domain_args(call: Callable):
         def func(self, domain: str):
             # Validate domain
-            if domain == "":
-                self.window.unblock_domain_window("Domain cannot be empty")
+            if not Settings.MIN_DOMAIN_LENGTH.value <= len(domain) <= Settings.MAX_DOMAIN_LENGTH.value:
+                self.window.unblock_domain_window(f"Domain Should be between {Settings.MIN_DOMAIN_LENGTH} and {Settings.MAX_DOMAIN_LENGTH} characters")
                 return
             
             domain_regex = r"^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})+$"
