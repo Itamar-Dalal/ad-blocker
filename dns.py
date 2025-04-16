@@ -1,6 +1,7 @@
 from socket import socket, AF_INET, SOCK_DGRAM, timeout
+import socket as socket_module  # Import the socket module for constants like SOL_SOCKET
 from dnslib import DNSRecord, RR, QTYPE, A
-from network import TCPHandler
+from network import UDPHandler
 from database import DomainsDBHandler
 from cachetools import TTLCache
 
@@ -12,9 +13,11 @@ class DNSHandler:
     CACHE_TTL = 300  # Cache TTL in seconds
     CACHE_MAX_SIZE = 1000
 
-    def __init__(self) -> None:
+    def __init__(self, listen_ip: str = "0.0.0.0", listen_port: int = DNS_PORT) -> None:
+        self.listen_ip = listen_ip
+        self.listen_port = listen_port
         self.blocked_domains = DomainsDBHandler().get_domains()
-        self.tcp_handler = TCPHandler()
+        self.udp_handler = UDPHandler(debug=True)
         self.server = (DNSHandler.DNS_RESOLVER_SERVER, DNSHandler.DNS_PORT)
         self.sock = socket(AF_INET, SOCK_DGRAM)
         self.sock.connect(self.server)
@@ -23,24 +26,25 @@ class DNSHandler:
         self.cache = TTLCache(maxsize=DNSHandler.CACHE_MAX_SIZE, ttl=DNSHandler.CACHE_TTL)
 
     def __repr__(self) -> str:
-        return "DNSHandler()"
+        return f"DNSHandler(listen_ip={self.listen_ip}, listen_port={self.listen_port})"
 
     def handle_dns_request(self, data: bytes) -> bytes:
         """Handles incoming DNS requests."""
         request = DNSRecord.parse(data)
         domain_name = str(request.q.qname)[:-1]
         print(f"Received DNS request for: {domain_name}")
-        
+
         if domain_name in self.cache:
             print(f"Cache hit for domain: {domain_name}")
             return self.cache[domain_name]
 
         if self.is_blocked_domain(domain_name):
-            print(f"Domain {domain_name} is blocked.")
+            print(f"Domain {domain_name} is blocked")
             response = self.create_blocked_response(request, domain_name)
         else:
-            print(f"Domain {domain_name} is not blocked, forwarding request.")
+            print(f"Domain {domain_name} is not blocked, forwarding request")
             response = self.forward_request(data).pack()
+
         # Store the response in the cache
         self.cache[domain_name] = response
         return response
@@ -52,12 +56,11 @@ class DNSHandler:
     def forward_request(self, data: bytes) -> DNSRecord:
         """Forwards the DNS request to an external resolver and retrieves the response."""
         try:
-            self.tcp_handler.send_bytes(self.sock, data)
-            response_data = self.tcp_handler.recv_by_size(self.sock, return_type="bytes")
+            self.udp_handler.send_to(self.sock, data, self.server)
+            response_data, _ = self.udp_handler.recv_from(self.sock)
             if not response_data:
                 return DNSRecord()
-            response = DNSRecord.parse(response_data)
-            return response
+            return DNSRecord.parse(response_data)
         except timeout:
             print(f"Error: Request to DNS resolver server {self.server} timed out, returning empty response")
             return DNSRecord()
@@ -68,35 +71,28 @@ class DNSHandler:
     def create_blocked_response(self, query: DNSRecord, domain_name: str) -> bytes:
         """Creates a DNS response indicating the domain is blocked."""
         response = query.reply()
-        response.header.rcode = DNSHandler.NXDOMAIN # Set RCODE to NXDOMAIN (3 means No such domain)
+        response.header.rcode = DNSHandler.NXDOMAIN  # Set RCODE to NXDOMAIN (3 means No such domain)
         response.add_answer(RR(domain_name, QTYPE.A, rdata=A("0.0.0.0"), ttl=60))
         return response.pack()
 
-def test_dns_handler():
-    """Test function for DNSHandler."""
-    dns_handler = DNSHandler()
-
-    # Test blocked domain
-    blocked_domain = "ads.com"
-    query = DNSRecord.question(blocked_domain)
-    response = dns_handler.handle_dns_request(query.pack())
-    response_record = DNSRecord.parse(response)
-    if response_record.header.rcode == 3:
-        print("Blocked domain test passed")
-    else:
-        print("Blocked domain test failed: No response record")
-
-    # Test non-blocked domain
-    non_blocked_domain = "example.com"
-    query = DNSRecord.question(non_blocked_domain)
-    response = dns_handler.handle_dns_request(query.pack())
-    response_record = DNSRecord.parse(response)
-    if response_record.header.rcode == 0:
-        print("Non-blocked domain test passed")
-    else:
-        print("Non-blocked domain test failed")
-
-    print("All tests completed.")
+    def run(self) -> None:
+        """Runs the DNS server to handle incoming DNS requests."""
+        with socket(AF_INET, SOCK_DGRAM) as server_sock:
+            server_sock.setsockopt(socket_module.SOL_SOCKET, socket_module.SO_REUSEADDR, 1)  # Allow address reuse
+            server_sock.bind((self.listen_ip, self.listen_port))
+            print(f"DNS server running on {self.listen_ip}:{self.listen_port}")
+            while True:
+                try:
+                    data, client_addr = self.udp_handler.recv_from(server_sock)
+                    if data is None:
+                        continue
+                    print(f"Received DNS request from {client_addr}")
+                    response = self.handle_dns_request(data)
+                    self.udp_handler.send_to(server_sock, response, client_addr)
+                    print(f"Sent DNS response to {client_addr}")
+                except Exception as e:
+                    print(f"Error handling DNS request: {e}")
 
 if __name__ == "__main__":
-    test_dns_handler()
+    dns_handler = DNSHandler()
+    dns_handler.run()

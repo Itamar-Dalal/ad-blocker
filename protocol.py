@@ -42,6 +42,7 @@ class ErrorCodes(StrEnum):
     DOMAIN_IN_USE: str = "16"
     DOMAIN_NOT_EXIST: str = "17"
     INVALID_DOMAIN: str = "18"
+    DOMAIN_NOT_RESOLVED: str = "19"
     
 
 class Protocol:

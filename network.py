@@ -165,6 +165,41 @@ class TCPHandler:
             time.sleep(3)
             c.close()
 
+class UDPHandler:
+    def __init__(self, debug=False):
+        self.UDP_DEBUG = debug
+
+    def __log(self, prefix, data, max_to_print=100):
+        if not self.UDP_DEBUG:
+            return
+        data_to_log = data[:max_to_print]
+        if isinstance(data_to_log, bytes):
+            try:
+                data_to_log = data_to_log.decode()
+            except (UnicodeDecodeError, AttributeError):
+                pass
+        print(f"\n{prefix}({len(data)})>>>{data_to_log}")
+
+    def send_to(self, sock, data: bytes, addr):
+        """Send data to a specific address using UDP."""
+        if len(data) == 0:
+            return
+        try:
+            sock.sendto(data, addr)
+            self.__log("Sent", data)
+        except OSError as e:
+            print(f"Error sending data: {e}")
+
+    def recv_from(self, sock, buffer_size=512):
+        """Receive data from a UDP socket."""
+        try:
+            data, addr = sock.recvfrom(buffer_size)
+            self.__log("Received", data)
+            return data, addr
+        except OSError as e:
+            print(f"Error receiving data: {e}")
+            return None, None
+
 if __name__ == "__main__":
     import sys
 

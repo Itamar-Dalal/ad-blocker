@@ -268,6 +268,9 @@ class Server:
         if not Server.is_valid_domain(domain):
             self.protocol.send_error(cli_sock, ErrorCodes.INVALID_DOMAIN.value)
             return
+        if not Server.is_domain_resolved(domain):
+            self.protocol.send_error(cli_sock, ErrorCodes.DOMAIN_NOT_RESOLVED.value)
+            return
         if self.domains_db_handler.is_domain_exist(domain):
             self.protocol.send_error(cli_sock, ErrorCodes.DOMAIN_IN_USE.value)
             return
@@ -292,13 +295,15 @@ class Server:
         print(f"Domain '{domain}' removed by user '{username}'")
     
     @staticmethod
-    def is_valid_domain(domain) -> bool:
-        """Check if the domain is valid and exists."""
-        if not Settings.MIN_DOMAIN_LENGTH.value <= len(domain) <= Settings.MAX_DOMAIN_LENGTH.value:
+    def is_valid_domain(domain: str) -> bool:
+        """Check if the domain is valid and meets length requirements."""
+        if not (Settings.MIN_DOMAIN_LENGTH.value <= len(domain) <= Settings.MAX_DOMAIN_LENGTH.value):
             return False
         domain_regex = r"^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})+$"
-        if not re.match(domain_regex, domain):
-            return False
+        return bool(re.match(domain_regex, domain))
+
+    @staticmethod
+    def is_domain_resolved(domain) -> bool:
         # Check if the domain resolves to an IP address
         try:
             gethostbyname(domain)

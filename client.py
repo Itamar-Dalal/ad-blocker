@@ -106,7 +106,7 @@ class Client:
         def func(self, domain: str):
             # Validate domain
             if not Settings.MIN_DOMAIN_LENGTH.value <= len(domain) <= Settings.MAX_DOMAIN_LENGTH.value:
-                self.window.block_domain_window(f"Domain Should be between {Settings.MIN_DOMAIN_LENGTH} and {Settings.MAX_DOMAIN_LENGTH} characters")
+                self.window.block_domain_window(f"Domain Should be between {Settings.MIN_DOMAIN_LENGTH.value} and {Settings.MAX_DOMAIN_LENGTH.value} characters")
                 return
             domain_regex = r"^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})+$"
             if not re.match(domain_regex, domain):
