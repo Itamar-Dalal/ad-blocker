@@ -96,3 +96,4 @@ class DNSHandler:
 if __name__ == "__main__":
     dns_handler = DNSHandler()
     dns_handler.run()
+    

@@ -1,3 +1,5 @@
+__author__ = "Itamar Dalal"
+
 from sys import argv
 from threading import Thread, Semaphore
 import socket

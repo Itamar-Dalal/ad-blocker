@@ -1,3 +1,5 @@
+__author__ = "Itamar Dalal"
+
 from PyQt6.QtWidgets import QApplication
 import gui
 from socket import socket, AF_INET, SOCK_STREAM

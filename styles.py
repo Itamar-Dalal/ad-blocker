@@ -1,3 +1,5 @@
+__author__ = "Itamar Dalal"
+
 from registry import RegistryHandler
 
 class Styles:

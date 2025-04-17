@@ -1,3 +1,5 @@
+__author__ = "Itamar Dalal"
+
 import logging
 from winreg import HKEY_CURRENT_USER, CreateKey, SetValueEx, REG_DWORD, KEY_ALL_ACCESS, OpenKey, QueryValueEx
 

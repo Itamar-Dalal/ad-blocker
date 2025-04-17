@@ -1,3 +1,5 @@
+__author__ = "Itamar Dalal"
+
 from enum import Enum
 
 class Settings(Enum):

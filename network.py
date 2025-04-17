@@ -3,6 +3,8 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 import logging
 
+__author__ = "Itamar Dalal"
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 

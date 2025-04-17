@@ -1,3 +1,5 @@
+__author__ = "Itamar Dalal"
+
 import sqlite3
 from hashlib import sha256
 from secrets import token_bytes

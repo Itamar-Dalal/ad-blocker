@@ -1,3 +1,5 @@
+__author__ = "Itamar Dalal"
+
 import logging
 from enum import StrEnum
 from network import TCPHandler
@@ -106,6 +108,3 @@ class Protocol:
             logger.error("Error in recv_data: invalid response")
             raise ValueError("Invalid response")
         return response
-
-if __name__ == "__main__":
-    protocol = Protocol()

@@ -1,3 +1,5 @@
+__author__ = "Itamar Dalal"
+
 import logging
 from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit, QGridLayout, QHBoxLayout, QCheckBox, QToolButton
 from PyQt6.QtCore import Qt
