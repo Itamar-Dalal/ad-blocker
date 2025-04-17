@@ -1,4 +1,8 @@
+import logging
 from winreg import HKEY_CURRENT_USER, CreateKey, SetValueEx, REG_DWORD, KEY_ALL_ACCESS, OpenKey, QueryValueEx
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class RegistryHandler:
     """
@@ -36,7 +40,7 @@ class RegistryHandler:
                 except FileNotFoundError:
                     self.change_theme(RegistryHandler.LIGHT_THEME) # Default theme is light
         except Exception as e:
-            print(f"Failed to initialize RegistryHandler: {e}")
+            logger.error(f"Failed to initialize RegistryHandler: {e}")
 
     def __enter__(self):
         return self
@@ -52,9 +56,9 @@ class RegistryHandler:
             settings_key_path = rf"{RegistryHandler.REGISTRY_PATH}\{RegistryHandler.SETTINGS_PATH}"
             with OpenKey(RegistryHandler.KEY, settings_key_path, 0, KEY_ALL_ACCESS) as settings_key:
                 SetValueEx(settings_key, RegistryHandler.THEME_VALUE_NAME, 0, REG_DWORD, theme_value)
-                #print(f"Theme changed to {'dark' if theme_value else 'light'} successfully")
+                logger.info(f"Theme changed to {'dark' if theme_value else 'light'} successfully")
         except Exception as e:
-            print(f"Failed to change theme: {e}")
+            logger.error(f"Failed to change theme: {e}")
 
     @staticmethod
     def retrieve_theme() -> int:
@@ -64,7 +68,7 @@ class RegistryHandler:
                 theme_value, _ = QueryValueEx(settings_key, RegistryHandler.THEME_VALUE_NAME)
                 return theme_value
         except Exception as e:
-            print(f"Failed to retrieve theme: {e}")
+            logger.error(f"Failed to retrieve theme: {e}")
             return -1
 
 if __name__ == "__main__":

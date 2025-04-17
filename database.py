@@ -3,6 +3,16 @@ from hashlib import sha256
 from secrets import token_bytes
 from time import time
 from settings import Settings
+import requests
+import re
+from dnslib import DNSRecord, QTYPE
+from datetime import datetime
+import logging
+from typing import Set, List
+from socket import gethostbyname, gaierror
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class UsersDBHandler:
     SALT_LENGTH = 8
@@ -139,7 +149,7 @@ class EmailCodeDBHandler:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT timeout FROM emails WHERE email=?", (email,))
-            timeout = cursor.fetchone()[0]
+            timeout = datetime.fromtimestamp(cursor.fetchone()[0]).timestamp()
             return time() > timeout
 
     def save_email(self, email) -> None:
@@ -170,7 +180,15 @@ class EmailCodeDBHandler:
             cursor.execute("DROP TABLE IF EXISTS emails")
             conn.commit()
 
+
 class DomainsDBHandler:
+    # Configuration for dataset expansion
+    DATASET_URLS = [
+        "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
+        "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/lists/pro.txt",
+    ]
+    BLOCKLIST_SOURCE = "external_dataset"
+
     def __init__(self, db_path=Settings.DATABASE_PATH.value) -> None:
         self.db_path = db_path
         self.create_table()
@@ -182,19 +200,25 @@ class DomainsDBHandler:
                 """CREATE TABLE IF NOT EXISTS domains (
                                     domain TEXT UNIQUE NOT NULL PRIMARY KEY,
                                     username TEXT NOT NULL,
-                                    time FLOAT NOT NULL)"""
+                                    time FLOAT NOT NULL
+                )"""
             )
+
+            cursor.execute("PRAGMA table_info(domains)")
+            columns = [info[1] for info in cursor.fetchall()]
+            if 'source' not in columns:
+                cursor.execute("ALTER TABLE domains ADD COLUMN source TEXT")
             conn.commit()
 
     def get_connection(self):
         return sqlite3.connect(self.db_path)
 
-    def save_domain(self, domain, username) -> None:
+    def save_domain(self, domain, username, source="user") -> None:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT OR REPLACE INTO domains (domain, username, time) VALUES (?, ?, ?)",
-                (domain, username, time()),
+                "INSERT OR REPLACE INTO domains (domain, username, time, source) VALUES (?, ?, ?, ?)",
+                (domain, username, time(), source),
             )
             conn.commit()
     
@@ -216,27 +240,81 @@ class DomainsDBHandler:
             cursor.execute("SELECT domain FROM domains")
             return set([row[0] for row in cursor.fetchall()])
 
+    @staticmethod
+    def is_valid_domain(domain: str, use_dns_validation: bool = True) -> bool:
+        """Validate domain format and optionally resolvability."""
+        DOMAIN_REGEX = r"^(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})$"
+        if not re.match(DOMAIN_REGEX, domain):
+            logger.debug(f"Domain {domain} failed regex validation")
+            return False
+        
+        if not use_dns_validation:
+            return True
+        
+        try:
+            gethostbyname(domain)
+        except gaierror:
+            return False
+        return True
+
+    def fetch_dataset(self, url: str) -> List[str]:
+        """Fetch and parse domains from a dataset URL."""
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            domains = set()
+            
+            for line in response.text.splitlines():
+                line = line.strip()
+                # skip comments and empty lines
+                if not line or line.startswith("#"):
+                    continue
+                
+                # handle hosts file format (e.g., "0.0.0.0 domain.com")
+                if line.startswith(("0.0.0.0", "127.0.0.1")):
+                    parts = line.split()
+                    if len(parts) > 1:
+                        domain = parts[1]
+                else:
+                    domain = line
+                
+                # clean and validate domain
+                domain = domain.strip().lower()
+                if self.is_valid_domain(domain, use_dns_validation=False):
+                    domains.add(domain)
+            
+            return list(domains)
+        except requests.RequestException as e:
+            logger.error(f"Failed to fetch dataset from {url}: {e}")
+            return []
+
+    def expand_domains_from_datasets(self, use_dns_validation: bool = False) -> int:
+        """Expand the domain database with external datasets."""
+        existing_domains = self.get_domains()
+        new_domains_count = 0
+
+        for url in self.DATASET_URLS:
+            logger.info(f"Fetching dataset from {url}")
+            domains = self.fetch_dataset(url)
+            logger.info(f"Retrieved {len(domains)} domains from {url}")
+
+            for domain in domains:
+                if domain not in existing_domains:
+                    self.save_domain(domain, "system", self.BLOCKLIST_SOURCE)
+                    new_domains_count += 1
+                    existing_domains.add(domain)
+                    logger.debug(f"Added domain {domain}")
+                else:
+                    logger.debug(f"Skipped duplicate domain {domain}")
+
+        logger.info(f"Added {new_domains_count} new domains to the database")
+        return new_domains_count
+
+
 if __name__ == "__main__":
-    # example usage:
+    # Example usage:
     db_test = UsersDBHandler()
-    """if not db_test.is_username_exist("user1"):
-        db_test.save_user("user1", "user1@example.com", "password123")
-    print(db_test.is_username_exist("user1"))
-    print(db_test.is_password_ok("user1", "password123"))
-    print(db_test.is_password_ok("user1", "pass123"))
-    db_test.update_user_password("user1", "newpassword456")
-    print(db_test.get_username("user1@example.com"))
-    if not db_test.is_username_exist("itamar"):
-        db_test.save_user("itamar", "dalalitamar@gmail.com", "dllilo05")
-    print(db_test.is_username_exist("itamar"))
-    print(db_test.is_email_exist("dalalitamar@gmail.com"))
-    print(db_test.get_email("itamar"))
-    print(db_test.is_password_ok("itamar", "dllilo05"))"""
-    db_test.delete_user("itamar")
-    #email_db_test = EmailCodeDBHandler()
-    #email_db_test.save_email("dalalitamar@gmail.com")
-    # print(email_db_test.is_timeout_passed("dalalitamar@gmail.com"))
-    # email_db_test.delete_email("dalalitamar@gmail.com")
-    # email_db_test.clean_expired_codes()
-    #domain_db = DomainsDBHandler()
-    #print(domain_db.get_domains())
+    # db_test.delete_user("itamar")
+    
+    domain_db = DomainsDBHandler()
+    domain_db.expand_domains_from_datasets(use_dns_validation=False)

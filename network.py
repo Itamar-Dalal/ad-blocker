@@ -1,6 +1,10 @@
 import socket, struct
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class TCPHandler:
     size_header_size = 8
@@ -178,7 +182,7 @@ class UDPHandler:
                 data_to_log = data_to_log.decode()
             except (UnicodeDecodeError, AttributeError):
                 pass
-        print(f"\n{prefix}({len(data)})>>>{data_to_log}")
+        logger.debug(f"{prefix}({len(data)})>>>{data_to_log}")
 
     def send_to(self, sock, data: bytes, addr):
         """Send data to a specific address using UDP."""
@@ -188,7 +192,7 @@ class UDPHandler:
             sock.sendto(data, addr)
             self.__log("Sent", data)
         except OSError as e:
-            print(f"Error sending data: {e}")
+            logger.error(f"Error sending data: {e}")
 
     def recv_from(self, sock, buffer_size=512):
         """Receive data from a UDP socket."""
@@ -197,7 +201,7 @@ class UDPHandler:
             self.__log("Received", data)
             return data, addr
         except OSError as e:
-            print(f"Error receiving data: {e}")
+            logger.error(f"Error receiving data: {e}")
             return None, None
 
 if __name__ == "__main__":

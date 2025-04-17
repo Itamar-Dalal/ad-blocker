@@ -7,6 +7,10 @@ from protocol import Protocol, ProtocolOpcodes, ErrorCodes
 from settings import Settings
 import sys
 import ctypes
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class Client:
     TIMEOUT: int = 5
@@ -226,8 +230,9 @@ class Client:
             self.server = socket(AF_INET, SOCK_STREAM)
             self.server.settimeout(Client.TIMEOUT)
             self.server.connect((ip, int(port)))
-            print(f"Connected to server at {ip}:{port}")
+            logger.info(f"Connected to server at {ip}:{port}")
         except (ConnectionRefusedError, TimeoutError, OSError) as e:
+            logger.error(f"Cannot connect to server at {ip}:{port}: {e}")
             self.window.connect_to_server_window(
                 f"Cannot find the server. Please enter a different IP or port."
             )
@@ -286,7 +291,7 @@ class Client:
         opcode = response[0]
         match opcode:
             case ProtocolOpcodes.ACKNOWLEDGMENT.value:
-                print(f"Domain '{domain}' successfully added")
+                logger.info(f"Domain '{domain}' successfully added")
                 self.window.home_window()
                 # TODO: Add success popup
                 return
@@ -309,7 +314,7 @@ class Client:
         opcode = response[0]
         match opcode:
             case ProtocolOpcodes.ACKNOWLEDGMENT.value:
-                print(f"Domain '{domain}' successfully removed")
+                logger.info(f"Domain '{domain}' successfully removed")
                 self.window.home_window()
                 # TODO: Add success popup
                 return
@@ -440,14 +445,14 @@ class Client:
                 self.invalid_response(response)
 
     def handle_error(self, response: list) -> int:
-        print(f'Received Error: {" ".join(response)}')
+        logger.error(f"Received Error: {' '.join(response)}")
         if len(response) < 2 or not response[1].isnumeric():
             self.invalid_response(response)
         error_code = response[1]
         return error_code
 
     def invalid_response(self, response: list) -> None:
-        print(f'Invalid response: {" ".join(response)}')
+        logger.error(f"Invalid response: {' '.join(response)}")
         self.exit_client()
 
     def exit_client(self) -> None:

@@ -1,5 +1,5 @@
 from socket import socket, AF_INET, SOCK_DGRAM, timeout
-import socket as socket_module  # Import the socket module for constants like SOL_SOCKET
+import socket as socket_module
 from dnslib import DNSRecord, RR, QTYPE, A
 from network import UDPHandler
 from database import DomainsDBHandler
@@ -17,7 +17,7 @@ class DNSHandler:
         self.listen_ip = listen_ip
         self.listen_port = listen_port
         self.blocked_domains = DomainsDBHandler().get_domains()
-        self.udp_handler = UDPHandler(debug=True)
+        self.udp_handler = UDPHandler()
         self.server = (DNSHandler.DNS_RESOLVER_SERVER, DNSHandler.DNS_PORT)
         self.sock = socket(AF_INET, SOCK_DGRAM)
         self.sock.connect(self.server)

@@ -1,3 +1,4 @@
+import logging
 from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit, QGridLayout, QHBoxLayout, QCheckBox, QToolButton
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QApplication
@@ -5,6 +6,9 @@ from PyQt6.QtGui import QColor, QIcon, QPixmap
 from styles import Styles
 from registry import RegistryHandler
 from typing import Any
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class GUI(QMainWindow):
     LIGHT_THEME = RegistryHandler.LIGHT_THEME
@@ -31,11 +35,12 @@ class GUI(QMainWindow):
         if not icon.isNull():
             return icon
         else:
-            print(f"Warning: Could not load icon from {Styles.ICON_PATH}")
+            logger.warning(f"Could not load icon from {Styles.ICON_PATH}")
             return QIcon()  # Return empty icon as fallback
     
     def change_logged_in_status(self, logged_in: bool) -> None:
         self.logged_in = logged_in
+        logger.info(f"Logged-in status changed to: {self.logged_in}")
     
     def welcome_window(self):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
@@ -126,6 +131,7 @@ class GUI(QMainWindow):
             error_label.setStyleSheet(Styles.ERROR_STYLE)
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
+            logger.error(f"Error in connect_to_server_window: {error_msg}")
 
         submit_button = QPushButton("Connect To A Server")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
@@ -216,6 +222,7 @@ class GUI(QMainWindow):
         layout.addWidget(footer)
 
         central_widget.setLayout(layout)
+        logger.info("Navigated to Home Window")
 
     def login_window(self, error_msg=None):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 180 if error_msg else Styles.WINDOW_HEIGHT + 150)
@@ -269,6 +276,7 @@ class GUI(QMainWindow):
             error_label.setStyleSheet(Styles.ERROR_STYLE)
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
+            logger.error(f"Error in login_window: {error_msg}")
 
         submit_button = QPushButton("Login")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
@@ -321,6 +329,7 @@ class GUI(QMainWindow):
             error_label.setStyleSheet(Styles.ERROR_STYLE)
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
+            logger.error(f"Error in forgot_password_window: {error_msg}")
 
         submit_button = QPushButton("Send Code")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
@@ -363,6 +372,7 @@ class GUI(QMainWindow):
             error_label.setStyleSheet(Styles.ERROR_STYLE)
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
+            logger.error(f"Error in forgot_password_code_window: {error_msg}")
 
         submit_button = QPushButton("Submit")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
@@ -412,6 +422,7 @@ class GUI(QMainWindow):
             error_label.setStyleSheet(Styles.ERROR_STYLE)
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
+            logger.error(f"Error in reset_password_window: {error_msg}")
 
         submit_button = QPushButton("Submit")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
@@ -449,6 +460,7 @@ class GUI(QMainWindow):
             error_label.setStyleSheet(Styles.ERROR_STYLE)
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
+            logger.error(f"Error in change_password_window: {error_msg}")
 
         submit_button = QPushButton("Send Code")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
@@ -491,6 +503,7 @@ class GUI(QMainWindow):
             error_label.setStyleSheet(Styles.ERROR_STYLE)
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
+            logger.error(f"Error in block_domain_window: {error_msg}")
 
         submit_button = QPushButton("Block Domain")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
@@ -561,6 +574,7 @@ class GUI(QMainWindow):
             error_label.setStyleSheet(Styles.ERROR_STYLE)
             error_label.setWordWrap(True)
             form_layout.addWidget(error_label)
+            logger.error(f"Error in create_account_window: {error_msg}")
 
         layout.addLayout(form_layout)
 
@@ -610,6 +624,7 @@ class GUI(QMainWindow):
             error_label.setStyleSheet(Styles.ERROR_STYLE)
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
+            logger.error(f"Error in email_verification_window: {error_msg}")
 
         submit_button = QPushButton("Submit Code")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
@@ -652,6 +667,7 @@ class GUI(QMainWindow):
             error_label.setStyleSheet(Styles.ERROR_STYLE)
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
+            logger.error(f"Error in unblock_domain_window: {error_msg}")
 
         submit_button = QPushButton("Unblock Domain")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
@@ -709,6 +725,7 @@ class GUI(QMainWindow):
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
+        logger.info("Navigated to Settings Window")
 
     def change_theme_window(self):
         self.setFixedSize(Styles.WINDOW_WIDTH + 600, Styles.WINDOW_HEIGHT + 200)
@@ -747,34 +764,44 @@ class GUI(QMainWindow):
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
+        logger.info("Navigated to Change Theme Window")
 
     def update_theme(self, theme):
-        if theme == GUI.LIGHT_THEME:
-            RegistryHandler.change_theme(RegistryHandler.LIGHT_THEME)
-        elif theme == GUI.DARK_THEME:
-            RegistryHandler.change_theme(RegistryHandler.DARK_THEME)
-        elif theme == GUI.DEFAULT_THEME:
-            theme = RegistryHandler.retrieve_theme()
-        else:
-            print("Error in update_theme: Invalid theme value provided")
-            return
-        
-        if theme == RegistryHandler.LIGHT_THEME:
-            self.setStyleSheet(Styles.LIGHT_THEME)
-        elif theme == RegistryHandler.DARK_THEME:
-            self.setStyleSheet(Styles.DARK_THEME)
-        Styles.update_theme_styles()
+        try:
+            if theme == GUI.LIGHT_THEME:
+                RegistryHandler.change_theme(RegistryHandler.LIGHT_THEME)
+            elif theme == GUI.DARK_THEME:
+                RegistryHandler.change_theme(RegistryHandler.DARK_THEME)
+            elif theme == GUI.DEFAULT_THEME:
+                theme = RegistryHandler.retrieve_theme()
+            else:
+                logger.error("Invalid theme value provided to update_theme")
+                return
 
-        if theme != GUI.DEFAULT_THEME:
-            self.change_theme_window()
+            if theme == RegistryHandler.LIGHT_THEME:
+                self.setStyleSheet(Styles.LIGHT_THEME)
+            elif theme == RegistryHandler.DARK_THEME:
+                self.setStyleSheet(Styles.DARK_THEME)
+            Styles.update_theme_styles()
+
+            if theme != GUI.DEFAULT_THEME:
+                logger.info(f"Theme updated to {'Light' if theme == RegistryHandler.LIGHT_THEME else 'Dark'}")
+                self.change_theme_window()
+        except Exception as e:
+            logger.error(f"Failed to update theme: {e}")
 
     def toggle_password_visibility(self, password_input, button):
-        if button.isChecked():
-            password_input.setEchoMode(QLineEdit.EchoMode.Normal)
-            button.setIcon(QIcon(Styles.EYE_OFF_ICON_PATH))
-        else:
-            password_input.setEchoMode(QLineEdit.EchoMode.Password)
-            button.setIcon(QIcon(Styles.EYE_ICON_PATH))
+        try:
+            if button.isChecked():
+                password_input.setEchoMode(QLineEdit.EchoMode.Normal)
+                button.setIcon(QIcon(Styles.EYE_OFF_ICON_PATH))
+                logger.info("Password visibility toggled ON")
+            else:
+                password_input.setEchoMode(QLineEdit.EchoMode.Password)
+                button.setIcon(QIcon(Styles.EYE_ICON_PATH))
+                logger.info("Password visibility toggled OFF")
+        except Exception as e:
+            logger.error(f"Failed to toggle password visibility: {e}")
 
 if __name__ == "__main__":
     pass

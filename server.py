@@ -13,9 +13,13 @@ from email.mime.multipart import MIMEMultipart
 from database import UsersDBHandler, EmailCodeDBHandler, DomainsDBHandler
 from styles import Styles
 from time import time
+import logging
 
 IP = "0.0.0.0"
 PORT = 1234
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class Server:
     MAX_CLIENTS = 1000  # Set the maximum number of concurrent clients
@@ -72,7 +76,7 @@ class Server:
                         return
                     
         except Exception as e:
-            print(f"Thread for client at {addr} terminated: {e}")
+            logger.error(f"Thread for client at {addr} terminated: {e}")
         finally:
             self.close_client_connection(cli_sock, addr)
 
@@ -127,7 +131,7 @@ class Server:
         
         self.db_handler.save_user(username, email, password)
         self.email_code_db_handler.delete_email(email)
-        print("User registered successfully: ", username, password, email)
+        logger.info(f"User registered successfully: {username}, {password}, {email}")
     
     @staticmethod
     def send_verification_code(receiver_email: str, to_verify_email: bool) -> str:
@@ -171,17 +175,17 @@ class Server:
                 server.login(Settings.SERVER_EMAIL.value, Settings.SERVER_EMAIL_PASSWORD.value)
                 server.sendmail(Settings.SERVER_EMAIL.value, receiver_email, message.as_string())
             
-            print(f"Email successfully sent from {Settings.SERVER_EMAIL.value} to {receiver_email}")
+            logger.info(f"Email successfully sent from {Settings.SERVER_EMAIL.value} to {receiver_email}")
             return code
             
         except smtplib.SMTPException as e:
-            print(f"Failed to send email: {str(e)}")
+            logger.error(f"Failed to send email: {str(e)}")
             return None
         except FileNotFoundError as e:
-            print(f"Logo file not found: {str(e)}")
+            logger.error(f"Logo file not found: {str(e)}")
             return None
         except Exception as e:
-            print(f"Unexpected error: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}")
             return None
 
     def handle_forgot_password(self, cli_sock, addr, request: list) -> None:
@@ -233,7 +237,7 @@ class Server:
                 username = self.db_handler.get_username(email)
                 self.db_handler.update_user_password(username, new_password)
                 self.email_code_db_handler.delete_email(email)
-                print("User successfully changed password")
+                logger.info("User successfully changed password")
                 self.protocol.send_acknowledgment(cli_sock)
             
             case _:
@@ -249,11 +253,11 @@ class Server:
             return
         self.protocol.send_acknowledgment(cli_sock)
         self.logged_in_users[cli_sock] = username
-        print("User logged in successfully: ", username, password)
+        logger.info(f"User logged in successfully: {username}, {password}")
 
     def handle_logout(self, cli_sock, addr) -> None:
         if cli_sock in self.logged_in_users:
-            print("User logged out successfully: ", self.logged_in_users[cli_sock])
+            logger.info(f"User logged out successfully: {self.logged_in_users[cli_sock]}")
             del self.logged_in_users[cli_sock]
             self.protocol.send_acknowledgment(cli_sock)
         else:
@@ -265,18 +269,15 @@ class Server:
             return
         username = self.logged_in_users[cli_sock]
         domain = request[1]
-        if not Server.is_valid_domain(domain):
+        if not DomainsDBHandler.is_valid_domain(domain):
             self.protocol.send_error(cli_sock, ErrorCodes.INVALID_DOMAIN.value)
-            return
-        if not Server.is_domain_resolved(domain):
-            self.protocol.send_error(cli_sock, ErrorCodes.DOMAIN_NOT_RESOLVED.value)
             return
         if self.domains_db_handler.is_domain_exist(domain):
             self.protocol.send_error(cli_sock, ErrorCodes.DOMAIN_IN_USE.value)
             return
         self.domains_db_handler.save_domain(domain, username)
         self.protocol.send_acknowledgment(cli_sock)
-        print(f"Domain '{domain}' added by user '{username}'")
+        logger.info(f"Domain '{domain}' added by user '{username}'")
 
     def handle_remove_domain(self, cli_sock, addr, request: list) -> None:
         if cli_sock not in self.logged_in_users:
@@ -284,7 +285,7 @@ class Server:
             return
         username = self.logged_in_users[cli_sock]
         domain = request[1]
-        if not Server.is_valid_domain(domain):
+        if not DomainsDBHandler.is_valid_domain(domain, False):
             self.protocol.send_error(cli_sock, ErrorCodes.INVALID_DOMAIN.value)
             return
         if not self.domains_db_handler.is_domain_exist(domain):
@@ -292,32 +293,15 @@ class Server:
             return
         self.domains_db_handler.remove_domain(domain)
         self.protocol.send_acknowledgment(cli_sock)
-        print(f"Domain '{domain}' removed by user '{username}'")
-    
-    @staticmethod
-    def is_valid_domain(domain: str) -> bool:
-        """Check if the domain is valid and meets length requirements."""
-        if not (Settings.MIN_DOMAIN_LENGTH.value <= len(domain) <= Settings.MAX_DOMAIN_LENGTH.value):
-            return False
-        domain_regex = r"^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})+$"
-        return bool(re.match(domain_regex, domain))
-
-    @staticmethod
-    def is_domain_resolved(domain) -> bool:
-        # Check if the domain resolves to an IP address
-        try:
-            gethostbyname(domain)
-        except gaierror:
-            return False
-        return True
+        logger.info(f"Domain '{domain}' removed by user '{username}'")
     
     def invalid_request(self, cli_sock, addr, request: list) -> None:
-        print(f"Invalid request received from client at {addr}: {request}")
+        logger.warning(f"Invalid request received from client at {addr}: {request}")
         self.protocol.send_error(cli_sock, ErrorCodes.INVALID_REQUEST.value)
         self.close_client_connection(cli_sock, addr)
 
     def close_client_connection(self, cli_sock, addr):
-        print(f"Closing connection with client at {addr}...")
+        logger.info(f"Closing connection with client at {addr}...")
         if cli_sock in self.logged_in_users:
             del self.logged_in_users[cli_sock]
         cli_sock.close()
@@ -326,12 +310,12 @@ class Server:
     def run(self):
         """Run the server application."""
         try:
-            print("Main thread: starting to accept...")
+            logger.info("Main thread: starting to accept...")
             while True:
                 self.email_code_db_handler.clean_expired_codes()
                 self.semaphore.acquire()
                 cli_sock, addr = self.srv_sock.accept()
-                print(f"Main thread: accepted connection from {addr}")
+                logger.info(f"Main thread: accepted connection from {addr}")
                 t: Thread = Thread(
                     target=self.handle_client,
                     args=(cli_sock, addr),
@@ -339,18 +323,18 @@ class Server:
                 t.start()
                 self.threads.append(t)
         except KeyboardInterrupt:
-            print("\nMain thread: received keyboard interrupt. Shutting down...")
+            logger.info("Main thread: received keyboard interrupt. Shutting down...")
         except error as se:
-            print(f"\nMain thread: encountered socket error: {se}")
+            logger.error(f"\nMain thread: encountered socket error: {se}")
         except Exception as e:
-            print(f"\nMain thread: encountered an unexpected error: {e}")
+            logger.error(f"\nMain thread: encountered an unexpected error: {e}")
         finally:
-            print("Main thread: waiting for all clients to die")
+            logger.info("Main thread: waiting for all clients to die")
             for t in self.threads:
                 try:
                     t.join()
                 except Exception as e:
-                    print(f"Error joining thread: {e}")
+                    logger.error(f"Error joining thread: {e}")
             self.srv_sock.close()
             self.email_code_db_handler.delete_table()
 

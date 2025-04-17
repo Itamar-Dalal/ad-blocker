@@ -1,6 +1,10 @@
+import logging
 from enum import StrEnum
 from network import TCPHandler
 from socket import socket
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class ProtocolOpcodes(StrEnum):
     ACKNOWLEDGMENT: str = "ACKG"
@@ -42,7 +46,6 @@ class ErrorCodes(StrEnum):
     DOMAIN_IN_USE: str = "16"
     DOMAIN_NOT_EXIST: str = "17"
     INVALID_DOMAIN: str = "18"
-    DOMAIN_NOT_RESOLVED: str = "19"
     
 
 class Protocol:
@@ -100,8 +103,7 @@ class Protocol:
         response = self.tcp_handler.recv_by_size(sock)
         response = response.split("|")
         if len(response) == 0:
-            print("Error in recv_data: invalid response")
-            # TODO: send error
+            logger.error("Error in recv_data: invalid response")
             raise ValueError("Invalid response")
         return response
 
