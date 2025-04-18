@@ -1,9 +1,15 @@
+__author__ = "Itamar Dalal"
+
 from socket import socket, AF_INET, SOCK_DGRAM, timeout
 import socket as socket_module
 from dnslib import DNSRecord, RR, QTYPE, A
 from network import UDPHandler
 from database import DomainsDBHandler
 from cachetools import TTLCache
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class DNSHandler:
     DNS_RESOLVER_SERVER = "8.8.8.8"  # Google Public DNS
@@ -21,7 +27,7 @@ class DNSHandler:
         self.server = (DNSHandler.DNS_RESOLVER_SERVER, DNSHandler.DNS_PORT)
         self.sock = socket(AF_INET, SOCK_DGRAM)
         self.sock.connect(self.server)
-        print(f"Connected to DNS resolver server: {self.server}")
+        logger.info(f"Connected to DNS resolver server: {self.server}")
         self.sock.settimeout(DNSHandler.RESOLVER_TIMEOUT)
         self.cache = TTLCache(maxsize=DNSHandler.CACHE_MAX_SIZE, ttl=DNSHandler.CACHE_TTL)
 
@@ -32,17 +38,17 @@ class DNSHandler:
         """Handles incoming DNS requests."""
         request = DNSRecord.parse(data)
         domain_name = str(request.q.qname)[:-1]
-        print(f"Received DNS request for: {domain_name}")
+        logger.info(f"Received DNS request for: {domain_name}")
 
         if domain_name in self.cache:
-            print(f"Cache hit for domain: {domain_name}")
+            logger.info(f"Cache hit for domain: {domain_name}")
             return self.cache[domain_name]
 
         if self.is_blocked_domain(domain_name):
-            print(f"Domain {domain_name} is blocked")
+            logger.info(f"Domain {domain_name} is blocked")
             response = self.create_blocked_response(request, domain_name)
         else:
-            print(f"Domain {domain_name} is not blocked, forwarding request")
+            logger.info(f"Domain {domain_name} is not blocked, forwarding request")
             response = self.forward_request(data).pack()
 
         # Store the response in the cache
@@ -59,13 +65,14 @@ class DNSHandler:
             self.udp_handler.send_to(self.sock, data, self.server)
             response_data, _ = self.udp_handler.recv_from(self.sock)
             if not response_data:
+                logger.warning("Received empty response from DNS resolver")
                 return DNSRecord()
             return DNSRecord.parse(response_data)
         except timeout:
-            print(f"Error: Request to DNS resolver server {self.server} timed out, returning empty response")
+            logger.error(f"Request to DNS resolver server {self.server} timed out")
             return DNSRecord()
         except Exception as e:
-            print(f"Error: {e}")
+            logger.error(f"Error forwarding DNS request: {e}")
             return DNSRecord()
 
     def create_blocked_response(self, query: DNSRecord, domain_name: str) -> bytes:
@@ -80,20 +87,19 @@ class DNSHandler:
         with socket(AF_INET, SOCK_DGRAM) as server_sock:
             server_sock.setsockopt(socket_module.SOL_SOCKET, socket_module.SO_REUSEADDR, 1)  # Allow address reuse
             server_sock.bind((self.listen_ip, self.listen_port))
-            print(f"DNS server running on {self.listen_ip}:{self.listen_port}")
+            logger.info(f"DNS server running on {self.listen_ip}:{self.listen_port}")
             while True:
                 try:
                     data, client_addr = self.udp_handler.recv_from(server_sock)
                     if data is None:
                         continue
-                    print(f"Received DNS request from {client_addr}")
+                    logger.info(f"Received DNS request from {client_addr}")
                     response = self.handle_dns_request(data)
                     self.udp_handler.send_to(server_sock, response, client_addr)
-                    print(f"Sent DNS response to {client_addr}")
+                    logger.info(f"Sent DNS response to {client_addr}")
                 except Exception as e:
-                    print(f"Error handling DNS request: {e}")
+                    logger.error(f"Error handling DNS request: {e}")
 
 if __name__ == "__main__":
     dns_handler = DNSHandler()
     dns_handler.run()
-    

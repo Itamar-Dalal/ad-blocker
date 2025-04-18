@@ -1,7 +1,7 @@
 __author__ = "Itamar Dalal"
 
 import logging
-from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit, QGridLayout, QHBoxLayout, QCheckBox, QToolButton
+from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit, QGridLayout, QHBoxLayout, QCheckBox, QToolButton, QComboBox
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QApplication
 from PyQt6.QtGui import QColor, QIcon, QPixmap
@@ -150,7 +150,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Connect To Server Window")
 
     def home_window(self):
-        self.setFixedSize(Styles.WINDOW_WIDTH + 375, Styles.WINDOW_HEIGHT + 200)
+        self.setFixedSize(Styles.WINDOW_WIDTH + 375, Styles.WINDOW_HEIGHT + 300)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -192,7 +192,10 @@ class GUI(QMainWindow):
             ("View History", self.home_window, False),
             ("Create Account", self.create_account_window, True),
             ("Unblock Domain", self.unblock_domain_window, False),
+            ("Admin Panel", self.admin_panel_window, False),
+            ("Connect To DNS", self.connect_to_dns_window, True),
             ("Settings", self.settings_window),
+            ("Exit", QApplication.instance().quit),
         ]
 
         row, col = 0, 0
@@ -693,6 +696,68 @@ class GUI(QMainWindow):
 
         central_widget.setLayout(layout)
         logger.info("Navigated to Unblock Domain Window")
+    
+    def connect_to_dns_window(self, error_msg=None):
+        self.setFixedSize(Styles.WINDOW_WIDTH + 200, Styles.WINDOW_HEIGHT + 100)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
+
+        label = QLabel("Connect to DNS")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(Styles.TITLE_STYLE)
+        layout.addWidget(label)
+
+        dns_ip_label = QLabel("DNS IP:")
+        dns_ip_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        dns_ip_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
+        dns_ip_input = QLineEdit()
+        dns_ip_input.setPlaceholderText("Enter DNS IP")
+        dns_ip_input.setStyleSheet(Styles.INPUT_STYLE)
+
+        interface_label = QLabel("Select Interface:")
+        interface_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        interface_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
+        interface_dropdown = QComboBox()
+        interface_dropdown.addItems(["Interface 1", "Interface 2", "Interface 3"])  # Replace with actual interfaces
+        interface_dropdown.setStyleSheet(Styles.INPUT_STYLE)
+
+        dns_ip_layout = QVBoxLayout()
+        dns_ip_layout.addWidget(dns_ip_label)
+        dns_ip_layout.addWidget(dns_ip_input)
+
+        interface_layout = QVBoxLayout()
+        interface_layout.addWidget(interface_label)
+        interface_layout.addWidget(interface_dropdown)
+
+        input_layout = QVBoxLayout()
+        input_layout.addLayout(dns_ip_layout)
+        input_layout.addLayout(interface_layout)
+        layout.addLayout(input_layout)
+
+        if error_msg:
+            error_label = QLabel(error_msg)
+            error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            error_label.setStyleSheet(Styles.ERROR_STYLE)
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+            logger.error(f"Error in connect_to_dns_window: {error_msg}")
+
+        connect_button = QPushButton("Connect to DNS")
+        connect_button.setStyleSheet(Styles.BUTTON_STYLE)
+        connect_button.clicked.connect(lambda: self.client.connect_to_dns(dns_ip_input.text(), interface_dropdown.currentText()))
+        layout.addWidget(connect_button)
+
+        return_button = QPushButton("Return Home")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(self.home_window)
+        layout.addWidget(return_button)
+
+        central_widget.setLayout(layout)
+        logger.info("Navigated to Connect to DNS Window")
+
+    def admin_panel_window(self, error_msg=None):
+        pass
 
     def settings_window(self):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
