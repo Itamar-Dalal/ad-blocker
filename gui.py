@@ -194,7 +194,7 @@ class GUI(QMainWindow):
             ("Create Account", self.create_account_window, True),
             ("Unblock Domain", self.unblock_domain_window, False),
             ("Admin Panel", self.admin_panel_window, False),
-            ("Connect To DNS", self.connect_to_dns_window, True),
+            ("Connect To DNS", self.connect_to_dns_window),
             ("Settings", self.settings_window),
             ("Exit", QApplication.instance().quit),
         ]
