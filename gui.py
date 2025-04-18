@@ -87,6 +87,7 @@ class GUI(QMainWindow):
         layout.addWidget(button)
 
         central_widget.setLayout(layout)
+        logger.info("Navigated to Welcome Window")
 
     def connect_to_server_window(self, error_msg=None):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 50)
@@ -146,6 +147,7 @@ class GUI(QMainWindow):
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
+        logger.info("Navigated to Connect To Server Window")
 
     def home_window(self):
         self.setFixedSize(Styles.WINDOW_WIDTH + 375, Styles.WINDOW_HEIGHT + 200)
@@ -301,6 +303,7 @@ class GUI(QMainWindow):
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
+        logger.info("Navigated to Login Window")
 
     def forgot_password_window(self, error_msg=None):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
@@ -344,6 +347,7 @@ class GUI(QMainWindow):
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
+        logger.info("Navigated to Forgot Password Window")
     
     def forgot_password_code_window(self, error_msg=None):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
@@ -387,6 +391,7 @@ class GUI(QMainWindow):
         layout.addWidget(again_button)
 
         central_widget.setLayout(layout)
+        logger.info("Navigated to Forgot Password Code Window")
     
     def reset_password_window(self, error_msg=None):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT - 70 if error_msg else Styles.WINDOW_HEIGHT - 90)
@@ -432,6 +437,7 @@ class GUI(QMainWindow):
         layout.addWidget(submit_button)
 
         central_widget.setLayout(layout)
+        logger.info("Navigated to Reset Password Window")
     
     def change_password_window(self, error_msg=None):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
@@ -475,6 +481,7 @@ class GUI(QMainWindow):
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
+        logger.info("Navigated to Change Password Window")
     
     def block_domain_window(self, error_msg=None):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT if not error_msg else Styles.WINDOW_HEIGHT - 10)
@@ -518,6 +525,7 @@ class GUI(QMainWindow):
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
+        logger.info("Navigated to Block Domain Window")
     
     def create_account_window(self, error_msg=None):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 220 if error_msg else Styles.WINDOW_HEIGHT + 170)
@@ -596,6 +604,7 @@ class GUI(QMainWindow):
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
+        logger.info("Navigated to Create Account Window")
 
     def email_verification_window(self, error_msg=None):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
@@ -639,6 +648,7 @@ class GUI(QMainWindow):
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
+        logger.info("Navigated to Email Verification Window")
     
     def unblock_domain_window(self, error_msg=None):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT if not error_msg else Styles.WINDOW_HEIGHT - 10)
@@ -682,6 +692,7 @@ class GUI(QMainWindow):
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
+        logger.info("Navigated to Unblock Domain Window")
 
     def settings_window(self):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
@@ -770,6 +781,7 @@ class GUI(QMainWindow):
 
     def update_theme(self, theme):
         try:
+            is_default_theme: bool = (theme == GUI.DEFAULT_THEME)
             if theme == GUI.LIGHT_THEME:
                 RegistryHandler.change_theme(RegistryHandler.LIGHT_THEME)
             elif theme == GUI.DARK_THEME:
@@ -786,7 +798,7 @@ class GUI(QMainWindow):
                 self.setStyleSheet(Styles.DARK_THEME)
             Styles.update_theme_styles()
 
-            if theme != GUI.DEFAULT_THEME:
+            if not is_default_theme:
                 logger.info(f"Theme updated to {'Light' if theme == RegistryHandler.LIGHT_THEME else 'Dark'}")
                 self.change_theme_window()
         except Exception as e:

@@ -290,7 +290,7 @@ class DomainsDBHandler:
             logger.error(f"Failed to fetch dataset from {url}: {e}")
             return []
 
-    def expand_domains_from_datasets(self, use_dns_validation: bool = False) -> int:
+    def expand_domains_from_datasets(self) -> int:
         """Expand the domain database with external datasets."""
         existing_domains = self.get_domains()
         new_domains_count = 0
@@ -319,4 +319,4 @@ if __name__ == "__main__":
     # db_test.delete_user("itamar")
     
     domain_db = DomainsDBHandler()
-    domain_db.expand_domains_from_datasets(use_dns_validation=False)
+    domain_db.expand_domains_from_datasets()

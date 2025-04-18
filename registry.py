@@ -58,7 +58,7 @@ class RegistryHandler:
             settings_key_path = rf"{RegistryHandler.REGISTRY_PATH}\{RegistryHandler.SETTINGS_PATH}"
             with OpenKey(RegistryHandler.KEY, settings_key_path, 0, KEY_ALL_ACCESS) as settings_key:
                 SetValueEx(settings_key, RegistryHandler.THEME_VALUE_NAME, 0, REG_DWORD, theme_value)
-                logger.info(f"Theme changed to {'dark' if theme_value else 'light'} successfully")
+                logger.info(f"Theme changed to {'dark' if theme_value else 'light'} in registry successfully")
         except Exception as e:
             logger.error(f"Failed to change theme: {e}")
 
