@@ -8,6 +8,7 @@ from PyQt6.QtGui import QColor, QIcon, QPixmap
 from styles import Styles
 from registry import RegistryHandler
 from typing import Any
+from dns_config import DNSConfig
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -698,7 +699,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Unblock Domain Window")
     
     def connect_to_dns_window(self, error_msg=None):
-        self.setFixedSize(Styles.WINDOW_WIDTH + 200, Styles.WINDOW_HEIGHT + 100)
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 70 if error_msg else Styles.WINDOW_HEIGHT + 30)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -719,7 +720,8 @@ class GUI(QMainWindow):
         interface_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         interface_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
         interface_dropdown = QComboBox()
-        interface_dropdown.addItems(["Interface 1", "Interface 2", "Interface 3"])  # Replace with actual interfaces
+        interface_dropdown.addItems(DNSConfig.get_network_interfaces())
+        interface_dropdown.setPlaceholderText("Select interface")
         interface_dropdown.setStyleSheet(Styles.INPUT_STYLE)
 
         dns_ip_layout = QVBoxLayout()
@@ -745,7 +747,7 @@ class GUI(QMainWindow):
 
         connect_button = QPushButton("Connect to DNS")
         connect_button.setStyleSheet(Styles.BUTTON_STYLE)
-        connect_button.clicked.connect(lambda: self.client.connect_to_dns(dns_ip_input.text(), interface_dropdown.currentText()))
+        connect_button.clicked.connect(lambda: DNSConfig.change_dns(interface_dropdown.currentText(), dns_ip_input.text()))
         layout.addWidget(connect_button)
 
         return_button = QPushButton("Return Home")

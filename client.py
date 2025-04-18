@@ -10,6 +10,8 @@ from settings import Settings
 import sys
 import ctypes
 import logging
+import os
+from ctypes import wintypes
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -459,13 +461,104 @@ class Client:
 
     def exit_client(self) -> None:
         self.app.exit()
-        self.server.close()
+        if self.server:
+            self.server.close()
 
     def run(self):
-        self.window = gui.GUI(self)
-        self.window.show()
-        self.app.exec()
+        """Check for admin privileges and run the client."""
+        try:
+            is_admin = ctypes.windll.shell32.IsUserAnAdmin()
+        except Exception:
+            is_admin = False
 
+        if not is_admin:
+            # show a Windows message box asking for admin permission
+            response = ctypes.windll.user32.MessageBoxW(
+                0,
+                "This application requires administrative privileges to modify DNS settings.\nWould you like to run it as Administrator?",
+                "Admin Privileges Required",
+                0x00000004 | 0x00000030  # MB_YESNO | MB_ICONWARNING
+            )
+
+            if response == 6:  # IDYES
+                # Relaunch the script with admin privileges using ShellExecuteEx
+                script_path = os.path.abspath(sys.argv[0])
+                params = ' '.join([f'"{arg}"' for arg in sys.argv[1:]])
+                try:
+                    # Define SHELLEXECUTEINFO structure
+                    class SHELLEXECUTEINFO(ctypes.Structure):
+                        _fields_ = [
+                            ("cbSize", wintypes.DWORD),
+                            ("fMask", wintypes.ULONG),
+                            ("hwnd", wintypes.HWND),
+                            ("lpVerb", wintypes.LPCWSTR),
+                            ("lpFile", wintypes.LPCWSTR),
+                            ("lpParameters", wintypes.LPCWSTR),
+                            ("lpDirectory", wintypes.LPCWSTR),
+                            ("nShow", ctypes.c_int),
+                            ("hInstApp", wintypes.HINSTANCE),
+                            ("lpIDList", wintypes.LPVOID),
+                            ("lpClass", wintypes.LPCWSTR),
+                            ("hkeyClass", wintypes.HKEY),
+                            ("dwHotKey", wintypes.DWORD),
+                            ("hIcon", wintypes.HANDLE),
+                            ("hProcess", wintypes.HANDLE),
+                        ]
+
+                    sei = SHELLEXECUTEINFO()
+                    sei.cbSize = ctypes.sizeof(SHELLEXECUTEINFO)
+                    sei.fMask = 0x00000040  # SEE_MASK_NOCLOSEPROCESS
+                    sei.hwnd = None
+                    sei.lpVerb = "runas"  # Request elevation
+                    sei.lpFile = sys.executable
+                    sei.lpParameters = f'"{script_path}" {params}'.strip()
+                    sei.lpDirectory = None
+                    sei.nShow = 1  # SW_SHOWNORMAL
+                    sei.hInstApp = None
+                    sei.lpIDList = None
+                    sei.lpClass = None
+                    sei.hkeyClass = None
+                    sei.dwHotKey = 0
+                    sei.hIcon = None
+                    sei.hProcess = None
+
+                    success = ctypes.windll.shell32.ShellExecuteExW(ctypes.byref(sei))
+                    if not success or sei.hInstApp < 32:
+                        logger.error("Failed to elevate privileges via ShellExecuteEx")
+                        ctypes.windll.user32.MessageBoxW(
+                            0,
+                            "Failed to run as Administrator. Please try again or run the application manually with admin rights.",
+                            "Elevation Failed",
+                            0x00000010  # MB_ICONERROR
+                        )
+                        sys.exit(1)
+                    # Wait for the elevated process to start (optional, can be removed if not needed)
+                    ctypes.windll.kernel32.WaitForSingleObject(sei.hProcess, 0xFFFFFFFF)  # INFINITE
+                    ctypes.windll.kernel32.CloseHandle(sei.hProcess)
+                    sys.exit(0)
+                except Exception as e:
+                    logger.error(f"Failed to elevate privileges: {e}")
+                    ctypes.windll.user32.MessageBoxW(
+                        0,
+                        "Failed to run as Administrator. Please try again or run the application manually with admin rights.",
+                        "Elevation Failed",
+                        0x00000010  # MB_ICONERROR
+                    )
+                    sys.exit(1)
+            else:
+                # User chose not to elevate, exit
+                ctypes.windll.user32.MessageBoxW(
+                    0,
+                    "Administrative privileges are required to run this application. Exiting.",
+                    "Permission Denied",
+                    0x00000010  # MB_ICONERROR
+                )
+                sys.exit(1)
+        else:
+            # Already running as admin, proceed with client initialization
+            self.window = gui.GUI(self)
+            self.window.show()
+            self.app.exec()
 
 if __name__ == "__main__":
     c = Client.create_client()
