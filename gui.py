@@ -699,7 +699,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Unblock Domain Window")
     
     def connect_to_dns_window(self, error_msg=None):
-        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 70 if error_msg else Styles.WINDOW_HEIGHT + 30)
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 85 if error_msg else Styles.WINDOW_HEIGHT + 45)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -722,7 +722,7 @@ class GUI(QMainWindow):
         interface_dropdown = QComboBox()
         interface_dropdown.addItems(DNSConfig.get_network_interfaces())
         interface_dropdown.setPlaceholderText("Select interface")
-        interface_dropdown.setStyleSheet(Styles.INPUT_STYLE)
+        interface_dropdown.setStyleSheet(Styles.DROPDOWN_STYLE)
 
         dns_ip_layout = QVBoxLayout()
         dns_ip_layout.addWidget(dns_ip_label)
@@ -737,6 +737,8 @@ class GUI(QMainWindow):
         input_layout.addLayout(interface_layout)
         layout.addLayout(input_layout)
 
+        layout.addSpacing(Styles.LAYOUT_SPACING)
+
         if error_msg:
             error_label = QLabel(error_msg)
             error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -747,7 +749,7 @@ class GUI(QMainWindow):
 
         connect_button = QPushButton("Connect to DNS")
         connect_button.setStyleSheet(Styles.BUTTON_STYLE)
-        connect_button.clicked.connect(lambda: DNSConfig.change_dns(interface_dropdown.currentText(), dns_ip_input.text()))
+        connect_button.clicked.connect(lambda: self.client.connect_to_dns(interface_dropdown.currentText(), dns_ip_input.text()))
         layout.addWidget(connect_button)
 
         return_button = QPushButton("Return Home")

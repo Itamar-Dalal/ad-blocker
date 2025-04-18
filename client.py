@@ -12,6 +12,7 @@ import ctypes
 import logging
 import os
 from ctypes import wintypes
+from dns_config import DNSConfig
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -227,6 +228,27 @@ class Client:
             return call(self, password)
 
         return func
+    
+    def verify_connect_to_dns_args(call: Callable):
+        def func(self, interface: str, dns_ip: str):
+            if interface == "":
+                self.window.connect_to_dns_window(f"Interface name cannot be empty.")
+                return
+            # Regex to validate IPv4 addresses
+            ip_regex = (
+                r"^(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\."
+                r"(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\."
+                r"(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\."
+                r"(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)$"
+            )
+            if not re.match(ip_regex, dns_ip):
+                self.window.connect_to_dns_window(
+                    f"Invalid DNS IP: {dns_ip}. IP must be in the format [0-255].[0-255].[0-255].[0-255]."
+                )
+                return
+
+            return call(self, interface, dns_ip)
+        return func
 
     @verify_connection_args
     def connect_to_server(self, ip: str, port: str) -> None:
@@ -241,6 +263,11 @@ class Client:
                 f"Cannot find the server. Please enter a different IP or port."
             )
             return
+        self.window.home_window()
+    
+    @verify_connect_to_dns_args
+    def connect_to_dns(self, interface: str, dns_ip: str) -> None:
+        DNSConfig.change_dns(interface, dns_ip)
         self.window.home_window()
 
     @verify_login_args

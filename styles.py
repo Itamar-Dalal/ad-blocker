@@ -122,6 +122,39 @@ class Styles:
         }
     """
 
+    DROPDOWN_STYLE = """
+        QComboBox {
+            background-color: #ffffff;
+            border: 2px solid #2980b9;
+            border-radius: 10px;
+            padding: 5px;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+        QComboBox:hover {
+            border: 2px solid #3498db;
+        }
+        QComboBox::drop-down {
+            border: none;
+            background-color: #3498db;
+            width: 25px;
+            border-top-right-radius: 10px;
+            border-bottom-right-radius: 10px;
+        }
+        QComboBox::down-arrow {
+            image: url(assets/icons/down_arrow.png);
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        QComboBox QAbstractItemView {
+            background-color: #ffffff;
+            border: 1px solid #2980b9;
+            selection-background-color: #3498db;
+            selection-color: #ffffff;
+        }
+    """
+
     WINDOW_TITLE = "DNS AdBlocker"
     BUTTON_WIDTH = 200
     BUTTON_HEIGHT = 55
@@ -139,6 +172,38 @@ class Styles:
                 }
                 QLineEdit:focus {
                     border: 2px solid #3498db;
+                }
+            """
+            Styles.DROPDOWN_STYLE = """
+                QComboBox {
+                    background-color: #ffffff;
+                    border: 2px solid #2980b9;
+                    border-radius: 10px;
+                    padding: 5px;
+                    font-size: 16px;
+                    color: #2c3e50;
+                }
+                QComboBox:hover {
+                    border: 2px solid #3498db;
+                }
+                QComboBox::drop-down {
+                    border: none;
+                    background-color: #3498db;
+                    width: 25px;
+                    border-top-right-radius: 10px;
+                    border-bottom-right-radius: 10px;
+                }
+                QComboBox::down-arrow {
+                    image: url(assets/icons/down_arrow.png);
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 50%;
+                }
+                QComboBox QAbstractItemView {
+                    background-color: #ffffff;
+                    border: 1px solid #2980b9;
+                    selection-background-color: #3498db;
+                    selection-color: #ffffff;
                 }
             """
             Styles.TITLE_STYLE = """
@@ -177,6 +242,38 @@ class Styles:
                 }
                 QLineEdit:focus {
                     border: 2px solid #3498db;
+                }
+            """
+            Styles.DROPDOWN_STYLE = """
+                QComboBox {
+                    background-color: #2c2f3e;
+                    border: 2px solid #3D5A91;
+                    border-radius: 10px;
+                    padding: 5px;
+                    font-size: 16px;
+                    color: #D1DCE5;
+                }
+                QComboBox:hover {
+                    border: 2px solid #3498db;
+                }
+                QComboBox::drop-down {
+                    border: none;
+                    background-color: #3D5A91;
+                    width: 25px;
+                    border-top-right-radius: 10px;
+                    border-bottom-right-radius: 10px;
+                }
+                QComboBox::down-arrow {
+                    image: url(assets/icons/down_arrow.png);
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 50%;
+                }
+                QComboBox QAbstractItemView {
+                    background-color: #2c2f3e;
+                    border: 1px solid #3D5A91;
+                    selection-background-color: #3498db;
+                    selection-color: #D1DCE5;
                 }
             """
             Styles.TITLE_STYLE = """

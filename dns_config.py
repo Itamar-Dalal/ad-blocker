@@ -1,4 +1,8 @@
 import subprocess
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class DNSConfig:
     """
@@ -20,14 +24,14 @@ class DNSConfig:
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             
             if result.returncode != 0:
-                print(f"Error setting primary DNS: {result.stderr}")
+                logger.error(f"Error setting primary DNS: {result.stderr}")
                 return False
             
-            print(f"Primary DNS set to {primary_dns} for {interface_name}")
+            logger.info(f"Primary DNS set to {primary_dns} for {interface_name}")
             return True
 
         except Exception as e:
-            print(f"An error occurred: {e}")
+            logger.error(f"An error occurred: {e}")
             return False
 
     @staticmethod
@@ -41,7 +45,7 @@ class DNSConfig:
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True, encoding='utf-8', errors='ignore')
             
             if result.returncode != 0:
-                print(f"Error running netsh command: {result.stderr}")
+                logger.error(f"Error running netsh command: {result.stderr}")
                 return []
             
             interfaces = []
@@ -56,5 +60,5 @@ class DNSConfig:
             
             return interfaces
         except Exception as e:
-            print(f"Error retrieving interfaces: {e}")
+            logger.error(f"Error retrieving interfaces: {e}")
             return []
