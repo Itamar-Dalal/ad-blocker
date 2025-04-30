@@ -480,18 +480,25 @@ class Client:
             self.protocol.send_get_blocked_domains(self.server)
             response = self.protocol.recv_data(self.server)
             opcode = response[0]
-            if opcode == ProtocolOpcodes.BLOCKED_DOMAINS_RESPONSE.value:
-                blocked_domains = [
-                    tuple(domain_data.split(","))
-                    for domain_data in response[1].split("|")
-                ]
-                return blocked_domains
-            elif opcode == ProtocolOpcodes.ERROR.value:
-                error_code = self.handle_error(response)
-                logger.error(f"Error retrieving blocked domains: {error_code}")
-                return []
-            else:
-                self.invalid_response(response)
+            match opcode:
+                case ProtocolOpcodes.BLOCKED_DOMAINS_RESPONSE.value:
+                    blocked_domains = [
+                        tuple(domain_data.split(","))
+                        for domain_data in response[1:] if domain_data
+                    ]
+                    print(blocked_domains)
+                    return blocked_domains
+                
+                case ProtocolOpcodes.ERROR.value:
+                    error_code = self.handle_error(response)
+                    match error_code:
+                        # TODO: add error codes
+                        case _:
+                           self.invalid_response(response)
+
+                case _:
+                    self.invalid_response(response)
+
         except Exception as e:
             logger.error(f"Failed to get blocked domains: {e}")
             return []

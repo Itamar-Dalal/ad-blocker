@@ -307,6 +307,7 @@ class Server:
         username = self.logged_in_users[cli_sock]
         blocked_domains = self.domains_db_handler.get_user_blocked_domains(username)
         # Format the response: domains separated by '|', details separated by ','
+        logger.info(f"Blocked domains for user '{username}': {blocked_domains}")
         blocked_domains = [f"{domain},{time_added},{int(still_blocked)}" for domain, time_added, still_blocked in blocked_domains]
         self.protocol.send_blocked_domains_response(cli_sock, blocked_domains)
 

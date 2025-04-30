@@ -319,7 +319,9 @@ class DomainsDBHandler:
                 "SELECT domain, time, 1 FROM domains WHERE username=?",
                 (username,)
             )
-            return cursor.fetchall()
+            domains = cursor.fetchall()
+            logger.info(f"Fetched blocked domains for user '{username}': {domains}")
+            return domains
 
 
 if __name__ == "__main__":

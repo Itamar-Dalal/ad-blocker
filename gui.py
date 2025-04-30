@@ -190,7 +190,7 @@ class GUI(QMainWindow):
 
         buttons = [
             ("Login", self.login_window, True),
-            ("Add Domain", self.block_domain_window, False),
+            ("Block Domain", self.block_domain_window, False),
             ("View History", self.history_window, False),
             ("Create Account", self.create_account_window, True),
             ("Unblock Domain", self.unblock_domain_window, False),
@@ -850,7 +850,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Change Theme Window")
     
     def history_window(self, error_msg=None):
-        self.setFixedSize(Styles.WINDOW_WIDTH + 200, Styles.WINDOW_HEIGHT + 200)  # Increase window size
+        self.setFixedSize(Styles.WINDOW_WIDTH + 200, Styles.WINDOW_HEIGHT + 250)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -860,12 +860,25 @@ class GUI(QMainWindow):
         label.setStyleSheet(Styles.TITLE_STYLE)
         layout.addWidget(label)
 
+        search_layout = QHBoxLayout()
+        search_label = QLabel("Search Domain:")
+        search_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
+        search_input = QLineEdit()
+        search_input.setPlaceholderText("Enter domain name")
+        search_input.setStyleSheet(Styles.INPUT_STYLE)
+        search_button = QPushButton("Search")
+        search_button.setStyleSheet(Styles.BUTTON_STYLE)
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(search_input)
+        search_layout.addWidget(search_button)
+        layout.addLayout(search_layout)
+
         table = QTableWidget()
         table.setColumnCount(3)
         table.setHorizontalHeaderLabels(["Blocked Domain", "Time Added", "Currently Blocked"])
         table.setStyleSheet(Styles.TABLE_STYLE)
-        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)  # Make table non-editable
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)  # Adjust column widths
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         try:
             blocked_domains = self.client.get_blocked_domains()
@@ -886,6 +899,21 @@ class GUI(QMainWindow):
             error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
             error_label.setStyleSheet(Styles.ERROR_STYLE)
             layout.addWidget(error_label)
+
+        def search_domain():
+            domain_to_search = search_input.text().strip()
+            if not domain_to_search:
+                logger.warning("Search input is empty")
+                return
+            for row in range(table.rowCount()):
+                if table.item(row, 0) and table.item(row, 0).text() == domain_to_search:
+                    table.selectRow(row)
+                    table.scrollToItem(table.item(row, 0), QAbstractItemView.ScrollHint.PositionAtCenter)
+                    logger.info(f"Domain '{domain_to_search}' found at row {row}")
+                    return
+            logger.warning(f"Domain '{domain_to_search}' not found in the table")
+
+        search_button.clicked.connect(search_domain)
 
         layout.addWidget(table)
 
