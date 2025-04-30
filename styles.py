@@ -155,6 +155,30 @@ class Styles:
         }
     """
 
+    TABLE_STYLE = """
+        QTableWidget {
+            background-color: #f9f9f9;
+            border: 1px solid #d3d3d3;
+            border-radius: 5px;
+            gridline-color: #d3d3d3;
+            font-size: 14px;
+        }
+        QTableWidget::item {
+            padding: 5px;
+        }
+        QHeaderView::section {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+            padding: 4px;
+            border: 1px solid #2980b9;
+        }
+        QTableWidget::item:selected {
+            background-color: #2980b9;
+            color: white;
+        }
+    """
+
     WINDOW_TITLE = "DNS AdBlocker"
     BUTTON_WIDTH = 200
     BUTTON_HEIGHT = 55

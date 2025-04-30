@@ -475,6 +475,27 @@ class Client:
             case _:
                 self.invalid_response(response)
 
+    def get_blocked_domains(self):
+        try:
+            self.protocol.send_get_blocked_domains(self.server)
+            response = self.protocol.recv_data(self.server)
+            opcode = response[0]
+            if opcode == ProtocolOpcodes.BLOCKED_DOMAINS_RESPONSE.value:
+                blocked_domains = [
+                    tuple(domain_data.split(","))
+                    for domain_data in response[1].split("|")
+                ]
+                return blocked_domains
+            elif opcode == ProtocolOpcodes.ERROR.value:
+                error_code = self.handle_error(response)
+                logger.error(f"Error retrieving blocked domains: {error_code}")
+                return []
+            else:
+                self.invalid_response(response)
+        except Exception as e:
+            logger.error(f"Failed to get blocked domains: {e}")
+            return []
+
     def handle_error(self, response: list) -> int:
         logger.error(f"Received Error: {' '.join(response)}")
         if len(response) < 2 or not response[1].isnumeric():

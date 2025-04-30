@@ -1,7 +1,7 @@
 __author__ = "Itamar Dalal"
 
 import logging
-from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit, QGridLayout, QHBoxLayout, QCheckBox, QToolButton, QComboBox
+from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit, QGridLayout, QHBoxLayout, QCheckBox, QToolButton, QComboBox, QTableWidget, QTableWidgetItem, QAbstractItemView, QHeaderView
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QApplication
 from PyQt6.QtGui import QColor, QIcon, QPixmap
@@ -9,6 +9,7 @@ from styles import Styles
 from registry import RegistryHandler
 from typing import Any
 from dns_config import DNSConfig
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -190,7 +191,7 @@ class GUI(QMainWindow):
         buttons = [
             ("Login", self.login_window, True),
             ("Add Domain", self.block_domain_window, False),
-            ("View History", self.home_window, False),
+            ("View History", self.history_window, False),
             ("Create Account", self.create_account_window, True),
             ("Unblock Domain", self.unblock_domain_window, False),
             ("Admin Panel", self.admin_panel_window, False),
@@ -847,6 +848,62 @@ class GUI(QMainWindow):
 
         central_widget.setLayout(layout)
         logger.info("Navigated to Change Theme Window")
+    
+    def history_window(self, error_msg=None):
+        self.setFixedSize(Styles.WINDOW_WIDTH + 200, Styles.WINDOW_HEIGHT + 200)  # Increase window size
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
+
+        label = QLabel("History")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(Styles.TITLE_STYLE)
+        layout.addWidget(label)
+
+        table = QTableWidget()
+        table.setColumnCount(3)
+        table.setHorizontalHeaderLabels(["Blocked Domain", "Time Added", "Currently Blocked"])
+        table.setStyleSheet(Styles.TABLE_STYLE)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)  # Make table non-editable
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)  # Adjust column widths
+
+        try:
+            blocked_domains = self.client.get_blocked_domains()
+            table.setRowCount(len(blocked_domains))
+            for row, (domain, time_added, currently_blocked) in enumerate(blocked_domains):
+                try:
+                    readable_time = datetime.fromtimestamp(float(time_added)).strftime('%Y-%m-%d %H:%M:%S')
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Failed to convert time_added '{time_added}' to human-readable format: {e}")
+                    readable_time = time_added  # Fallback to original value
+
+                table.setItem(row, 0, QTableWidgetItem(domain))
+                table.setItem(row, 1, QTableWidgetItem(readable_time))
+                table.setItem(row, 2, QTableWidgetItem("Yes" if currently_blocked else "No"))
+        except Exception as e:
+            logger.error(f"Failed to retrieve blocked domains: {e}")
+            error_label = QLabel("Failed to load blocked domains.")
+            error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            error_label.setStyleSheet(Styles.ERROR_STYLE)
+            layout.addWidget(error_label)
+
+        layout.addWidget(table)
+
+        if error_msg:
+            error_label = QLabel(error_msg)
+            error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            error_label.setStyleSheet(Styles.ERROR_STYLE)
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+            logger.error(f"Error in history_window: {error_msg}")
+
+        return_button = QPushButton("Return Home")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(self.home_window)
+        layout.addWidget(return_button)
+
+        central_widget.setLayout(layout)
+        logger.info("Navigated to History Window")
 
     def update_theme(self, theme):
         try:

@@ -312,6 +312,15 @@ class DomainsDBHandler:
         logger.info(f"Added {new_domains_count} new domains to the database")
         return new_domains_count
 
+    def get_user_blocked_domains(self, username: str) -> list:
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT domain, time, 1 FROM domains WHERE username=?",
+                (username,)
+            )
+            return cursor.fetchall()
+
 
 if __name__ == "__main__":
     # Example usage:

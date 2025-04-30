@@ -73,6 +73,9 @@ class Server:
                     case ProtocolOpcodes.REMOVE_DOMAIN.value:
                         self.handle_remove_domain(cli_sock, addr, request)
 
+                    case ProtocolOpcodes.GET_BLOCKED_DOMAINS.value:
+                        self.handle_get_blocked_domains(cli_sock)
+
                     case _:
                         self.invalid_request(cli_sock, addr, request)
                         return
@@ -297,6 +300,16 @@ class Server:
         self.protocol.send_acknowledgment(cli_sock)
         logger.info(f"Domain '{domain}' removed by user '{username}'")
     
+    def handle_get_blocked_domains(self, cli_sock):
+        if cli_sock not in self.logged_in_users:
+            self.protocol.send_error(cli_sock, ErrorCodes.NOT_LOGGED_IN.value)
+            return
+        username = self.logged_in_users[cli_sock]
+        blocked_domains = self.domains_db_handler.get_user_blocked_domains(username)
+        # Format the response: domains separated by '|', details separated by ','
+        blocked_domains = [f"{domain},{time_added},{int(still_blocked)}" for domain, time_added, still_blocked in blocked_domains]
+        self.protocol.send_blocked_domains_response(cli_sock, blocked_domains)
+
     def invalid_request(self, cli_sock, addr, request: list) -> None:
         logger.warning(f"Invalid request received from client at {addr}: {request}")
         self.protocol.send_error(cli_sock, ErrorCodes.INVALID_REQUEST.value)

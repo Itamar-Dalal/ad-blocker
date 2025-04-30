@@ -19,6 +19,7 @@ class ProtocolOpcodes(StrEnum):
     RESET_PASSWORD: str = "RSPW"
     ADD_DOMAIN: str = "ADDM"
     REMOVE_DOMAIN: str = "REMD"
+    GET_BLOCKED_DOMAINS: str = "GBDM"
 
     EMAIL_VERIFICATION_CODE_SENT: str = "EVCS"
     VERIFICATION_CODE_CORRECT: str = "CDEK"
@@ -26,6 +27,7 @@ class ProtocolOpcodes(StrEnum):
     FORGOT_PASSWORD_CODE_SENT: str = "FPCS" 
     FORGOT_PASSWORD_CODE_CORRECT: str = "FPCO"
     FORGOT_PASSWORD_CODE_INCORRECT: str = "FPCW"
+    BLOCKED_DOMAINS_RESPONSE: str = "BDRS"
 
     ERROR: str = "ERRO"
 
@@ -81,7 +83,10 @@ class Protocol:
 
     def send_remove_domain(self, sock: socket, domain: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.REMOVE_DOMAIN.value}|{domain}")
-                                                 
+
+    def send_get_blocked_domains(self, sock: socket) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.GET_BLOCKED_DOMAINS.value}")
+
     # Server methods
     def send_acknowledgment(self, sock: socket) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ACKNOWLEDGMENT.value}")
@@ -97,6 +102,10 @@ class Protocol:
     
     def send_forgot_password_code_status(self, sock: socket, is_code_correct: bool) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE_CORRECT.value}" if is_code_correct else f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE_INCORRECT.value}")
+    
+    def send_blocked_domains_response(self, sock: socket, blocked_domains: list) -> None:
+        domains_str = "|".join(blocked_domains)
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.BLOCKED_DOMAINS_RESPONSE.value}|{domains_str}")
 
     def send_error(self, sock: socket, error_code: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ERROR.value}|{error_code}")
