@@ -24,7 +24,7 @@ class ProtocolOpcodes(StrEnum):
     EMAIL_VERIFICATION_CODE_SENT: str = "EVCS"
     VERIFICATION_CODE_CORRECT: str = "CDEK"
     VERIFICATION_CODE_INCORRECT: str = "CDEW"
-    FORGOT_PASSWORD_CODE_SENT: str = "FPCS" 
+    FORGOT_PASSWORD_CODE_SENT: str = "FPCS"
     FORGOT_PASSWORD_CODE_CORRECT: str = "FPCO"
     FORGOT_PASSWORD_CODE_INCORRECT: str = "FPCW"
     BLOCKED_DOMAINS_RESPONSE: str = "BDRS"
@@ -50,19 +50,18 @@ class ErrorCodes(StrEnum):
     DOMAIN_IN_USE: str = "16"
     DOMAIN_NOT_EXIST: str = "17"
     INVALID_DOMAIN: str = "18"
-    
+    INVALID_CREDENTIALS: str = "19"
 
 class Protocol:
     def __init__(self):
         self.tcp_handler = TCPHandler(True)
 
-    # Client methods
     def send_create_user(self, sock: socket, username: str, password: str, email: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.CREATE_USER.value}|{username}|{password}|{email}")
-    
+
     def send_login(self, sock: socket, username: str, password: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.LOGIN.value}|{username}|{password}")
-    
+
     def send_logout(self, sock: socket) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.LOGOUT.value}")
 
@@ -74,7 +73,7 @@ class Protocol:
 
     def send_forgot_password_code(self, sock: socket, code: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE.value}|{code}")
-    
+
     def send_reset_password(self, sock: socket, new_password: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.RESET_PASSWORD.value}|{new_password}")
 
@@ -87,22 +86,21 @@ class Protocol:
     def send_get_blocked_domains(self, sock: socket) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.GET_BLOCKED_DOMAINS.value}")
 
-    # Server methods
     def send_acknowledgment(self, sock: socket) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ACKNOWLEDGMENT.value}")
-    
+
     def send_email_code_sent(self, sock: socket) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.EMAIL_VERIFICATION_CODE_SENT.value}")
-    
+
     def send_verification_code_status(self, sock: socket, is_code_correct: bool) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.VERIFICATION_CODE_CORRECT.value}" if is_code_correct else f"{ProtocolOpcodes.VERIFICATION_CODE_INCORRECT.value}")
 
     def send_forgot_password_code_sent(self, sock: socket) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE_SENT.value}")
-    
+
     def send_forgot_password_code_status(self, sock: socket, is_code_correct: bool) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE_CORRECT.value}" if is_code_correct else f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE_INCORRECT.value}")
-    
+
     def send_blocked_domains_response(self, sock: socket, blocked_domains: list) -> None:
         domains_str = "|".join(blocked_domains)
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.BLOCKED_DOMAINS_RESPONSE.value}|{domains_str}")

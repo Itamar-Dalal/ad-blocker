@@ -2,7 +2,7 @@ __author__ = "Itamar Dalal"
 
 import sqlite3
 from hashlib import sha256
-from secrets import token_bytes
+from os import urandom
 from time import time
 from settings import Settings
 import requests
@@ -17,8 +17,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 class UsersDBHandler:
-    SALT_LENGTH = 8
     PEPPER = b"my_secret_pepper"
+    SALT_LENGTH = 16
 
     def __init__(self, db_path=Settings.DATABASE_PATH.value) -> None:
         self.db_path = db_path
@@ -32,7 +32,7 @@ class UsersDBHandler:
                                     username TEXT UNIQUE NOT NULL PRIMARY KEY,
                                     email TEXT UNIQUE NOT NULL,
                                     password TEXT NOT NULL,
-                                    salt TEXT NOT NULL)"""
+                                    salt BLOB NOT NULL)"""
             )
             conn.commit()
 
@@ -76,7 +76,6 @@ class UsersDBHandler:
                 "SELECT password, salt FROM users WHERE username=?", (username,)
             )
             stored_password, stored_salt = cursor.fetchone()
-
             if stored_password:
                 hashed_password = sha256(
                     password.encode() + stored_salt + UsersDBHandler.PEPPER
@@ -85,10 +84,8 @@ class UsersDBHandler:
             return False
 
     def save_user(self, username, email, password) -> None:
-        salt = token_bytes(UsersDBHandler.SALT_LENGTH)
-        hashed_password = sha256(
-            password.encode() + salt + UsersDBHandler.PEPPER
-        ).hexdigest()
+        salt = urandom(UsersDBHandler.SALT_LENGTH)
+        hashed_password = sha256(password.encode() + salt + UsersDBHandler.PEPPER).hexdigest()
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -98,15 +95,12 @@ class UsersDBHandler:
             conn.commit()
 
     def update_user_password(self, username, new_password) -> None:
+        salt = urandom(UsersDBHandler.SALT_LENGTH)
+        hashed_password = sha256(new_password.encode() + salt + UsersDBHandler.PEPPER).hexdigest()
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT salt FROM users WHERE username=?", (username,))
-            stored_salt = cursor.fetchone()[0]
-            hashed_password = sha256(
-                new_password.encode() + stored_salt + UsersDBHandler.PEPPER
-            ).hexdigest()
             cursor.execute(
-                "UPDATE users SET password=? WHERE username=?", (hashed_password, username)
+                "UPDATE users SET password=?, salt=? WHERE username=?", (hashed_password, salt, username)
             )
             conn.commit()
 
@@ -117,9 +111,8 @@ class UsersDBHandler:
                 cursor.execute("DELETE FROM users WHERE username=?", (username,))
                 conn.commit()
 
-
 class EmailCodeDBHandler:
-    TIMEOUT = Settings.EMAIL_CODE_TIMEOUT.value  # 5 minutes
+    TIMEOUT = Settings.EMAIL_CODE_TIMEOUT.value
 
     def __init__(self, db_path=Settings.DATABASE_PATH.value) -> None:
         self.db_path = db_path
@@ -182,9 +175,7 @@ class EmailCodeDBHandler:
             cursor.execute("DROP TABLE IF EXISTS emails")
             conn.commit()
 
-
 class DomainsDBHandler:
-    # Configuration for dataset expansion
     DATASET_URLS = [
         "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
         "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/lists/pro.txt",
@@ -223,7 +214,7 @@ class DomainsDBHandler:
                 (domain, username, time(), source),
             )
             conn.commit()
-    
+
     def remove_domain(self, domain) -> None:
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -235,7 +226,7 @@ class DomainsDBHandler:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM domains WHERE domain=?", (domain,))
             return cursor.fetchone() is not None
-    
+
     def get_domains(self) -> set:
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -244,15 +235,14 @@ class DomainsDBHandler:
 
     @staticmethod
     def is_valid_domain(domain: str, use_dns_validation: bool = True) -> bool:
-        """Validate domain format and optionally resolvability."""
         DOMAIN_REGEX = r"^(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})$"
         if not re.match(DOMAIN_REGEX, domain):
             logger.debug(f"Domain {domain} failed regex validation")
             return False
-        
+
         if not use_dns_validation:
             return True
-        
+
         try:
             gethostbyname(domain)
         except gaierror:
@@ -260,38 +250,33 @@ class DomainsDBHandler:
         return True
 
     def fetch_dataset(self, url: str) -> List[str]:
-        """Fetch and parse domains from a dataset URL."""
         try:
             response = requests.get(url, timeout=10)
             response.raise_for_status()
             domains = set()
-            
+
             for line in response.text.splitlines():
                 line = line.strip()
-                # skip comments and empty lines
                 if not line or line.startswith("#"):
                     continue
-                
-                # handle hosts file format (e.g., "0.0.0.0 domain.com")
+
                 if line.startswith(("0.0.0.0", "127.0.0.1")):
                     parts = line.split()
                     if len(parts) > 1:
                         domain = parts[1]
                 else:
                     domain = line
-                
-                # clean and validate domain
+
                 domain = domain.strip().lower()
                 if self.is_valid_domain(domain, use_dns_validation=False):
                     domains.add(domain)
-            
+
             return list(domains)
         except requests.RequestException as e:
             logger.error(f"Failed to fetch dataset from {url}: {e}")
             return []
 
     def expand_domains_from_datasets(self) -> int:
-        """Expand the domain database with external datasets."""
         existing_domains = self.get_domains()
         new_domains_count = 0
 
@@ -323,11 +308,7 @@ class DomainsDBHandler:
             logger.info(f"Fetched blocked domains for user '{username}': {domains}")
             return domains
 
-
 if __name__ == "__main__":
-    # Example usage:
     db_test = UsersDBHandler()
-    # db_test.delete_user("itamar")
-    
     domain_db = DomainsDBHandler()
     domain_db.expand_domains_from_datasets()

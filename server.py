@@ -4,6 +4,7 @@ from sys import argv
 from threading import Thread, Semaphore
 import socket
 from socket import socket, AF_INET, SOCK_STREAM, error, gaierror, gethostbyname
+import ssl
 from protocol import Protocol, ProtocolOpcodes, ErrorCodes
 from settings import Settings
 import re
@@ -24,31 +25,30 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 class Server:
-    MAX_CLIENTS = 1000  # Set the maximum number of concurrent clients
+    MAX_CLIENTS = 1000
     BACKLOG = 5
+    RATE_LIMIT_WINDOW = 60
+    MAX_ATTEMPTS = 5
 
     def __init__(self, ip=IP, port=PORT) -> None:
         self.ip = ip
         self.port = port
         self.srv_sock = socket(AF_INET, SOCK_STREAM)
-        self.srv_sock.bind((self.ip, self.port))
-        self.srv_sock.listen(Server.BACKLOG)
         self.threads = []
         self.semaphore = Semaphore(Server.MAX_CLIENTS)
         self.protocol = Protocol()
         self.db_handler = UsersDBHandler()
         self.email_code_db_handler = EmailCodeDBHandler()
         self.domains_db_handler = DomainsDBHandler()
-        self.logged_in_users = {} # {socket: username}
+        self.logged_in_users = {}
+        self.login_attempts = {}
 
     def __repr__(self) -> str:
         return f"Server({self.ip}, {self.port})"
-    
-    @classmethod
+
     def create_server(cls) -> "Server":
-        """Factory method to create and return a Server instance."""
         return cls()
-    
+
     def handle_client(self, cli_sock, addr):
         try:
             while True:
@@ -60,16 +60,16 @@ class Server:
 
                     case ProtocolOpcodes.FORGOT_PASSWORD.value:
                         self.handle_forgot_password(cli_sock, addr, request)
-                    
+
                     case ProtocolOpcodes.LOGIN.value:
                         self.handle_login(cli_sock, addr, request)
-                    
+
                     case ProtocolOpcodes.LOGOUT.value:
                         self.handle_logout(cli_sock, addr)
 
                     case ProtocolOpcodes.ADD_DOMAIN.value:
                         self.handle_add_domain(cli_sock, addr, request)
-                    
+
                     case ProtocolOpcodes.REMOVE_DOMAIN.value:
                         self.handle_remove_domain(cli_sock, addr, request)
 
@@ -79,7 +79,7 @@ class Server:
                     case _:
                         self.invalid_request(cli_sock, addr, request)
                         return
-                    
+
         except Exception as e:
             logger.error(f"Thread for client at {addr} terminated: {e}")
         finally:
@@ -91,6 +91,9 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.INVALID_USERNAME.value)
             return
         if not Settings.MIN_PASSWORD_LENGTH.value <= len(password) <= Settings.MAX_PASSWORD_LENGTH.value:
+            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD.value)
+            return
+        if not re.search(r"\d", password):
             self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD.value)
             return
 
@@ -115,7 +118,7 @@ class Server:
                 if len(client_code) != 6 or not client_code.isnumeric():
                     self.protocol.send_error(cli_sock, ErrorCodes.INVALID_CODE.value)
                     return
-                
+
                 if self.email_code_db_handler.is_timeout_passed(email):
                     self.email_code_db_handler.delete_email(email)
                     self.protocol.send_error(cli_sock, ErrorCodes.CODE_EXPIRED.value)
@@ -125,31 +128,30 @@ class Server:
                 self.protocol.send_verification_code_status(cli_sock, is_code_correct)
                 if not is_code_correct:
                     return
-            
-            case ProtocolOpcodes.CREATE_USER.value: # user wants to send another email
+
+            case ProtocolOpcodes.CREATE_USER.value:
                 self.handle_register(cli_sock, addr, response)
                 return
 
             case _:
                 self.invalid_request(cli_sock, addr, response)
                 return
-        
+
         self.db_handler.save_user(username, email, password)
         self.email_code_db_handler.delete_email(email)
-        logger.info(f"User registered successfully: {username}, {password}, {email}")
-    
-    @staticmethod
+        logger.info(f"User registered successfully: {username}, {email}")
+
     def send_verification_code(receiver_email: str, to_verify_email: bool) -> str:
         try:
             code_length = Settings.EMAIL_CODE_LENGTH.value
             code = f"{randrange(10 ** (code_length - 1), (10 ** code_length) - 1):0{code_length}d}"
-            
+
             message = MIMEMultipart("alternative")
             message["From"] = Settings.SERVER_EMAIL.value
             message["To"] = receiver_email
-            message["Subject"] = ("Email Verification Code - AdBlocker" if to_verify_email 
+            message["Subject"] = ("Email Verification Code - AdBlocker" if to_verify_email
                                else "Forgot Password Code - AdBlocker")
-        
+
             html = f"""\
             <html>
             <body style="text-align: center;">
@@ -167,22 +169,21 @@ class Server:
             </html>
             """
             message.attach(MIMEText(html, "html"))
-            
+
             with open(Styles.LOGO_WITH_BACKGROUND_PATH, "rb") as img:
                 mime_image = MIMEImage(img.read())
                 mime_image.add_header("Content-ID", "<logo>")
                 mime_image.add_header("Content-Disposition", "inline", filename="logo")
                 message.attach(mime_image)
-            
-            # send email
+
             with smtplib.SMTP(Settings.SMTP_SERVER.value, Settings.SMTP_PORT.value) as server:
                 server.starttls()
                 server.login(Settings.SERVER_EMAIL.value, Settings.SERVER_EMAIL_PASSWORD.value)
                 server.sendmail(Settings.SERVER_EMAIL.value, receiver_email, message.as_string())
-            
+
             logger.info(f"Email successfully sent from {Settings.SERVER_EMAIL.value} to {receiver_email}")
             return code
-            
+
         except smtplib.SMTPException as e:
             logger.error(f"Failed to send email: {str(e)}")
             return None
@@ -213,7 +214,7 @@ class Server:
                 if len(client_code) != 6 or not client_code.isnumeric():
                     self.protocol.send_error(cli_sock, ErrorCodes.INVALID_CODE.value)
                     return
-                
+
                 if self.email_code_db_handler.is_timeout_passed(email):
                     self.email_code_db_handler.delete_email(email)
                     self.protocol.send_error(cli_sock, ErrorCodes.CODE_EXPIRED.value)
@@ -223,14 +224,14 @@ class Server:
                 self.protocol.send_forgot_password_code_status(cli_sock, is_code_correct)
                 if not is_code_correct:
                     return
-            
-            case ProtocolOpcodes.FORGOT_PASSWORD.value: # user wants to send another email
+
+            case ProtocolOpcodes.FORGOT_PASSWORD.value:
                 self.handle_forgot_password(cli_sock, addr, response)
                 return
-            
+
             case _:
                 self.invalid_request(cli_sock, addr, response)
-        
+
         response = self.protocol.recv_data(cli_sock)
         opcode = response[0]
         match opcode:
@@ -239,26 +240,57 @@ class Server:
                 if not Settings.MIN_PASSWORD_LENGTH.value <= len(new_password) <= Settings.MAX_PASSWORD_LENGTH.value:
                     self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD.value)
                     return
+                if not re.search(r"\d", new_password):
+                    self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD.value)
+                    return
                 username = self.db_handler.get_username(email)
                 self.db_handler.update_user_password(username, new_password)
                 self.email_code_db_handler.delete_email(email)
-                logger.info("User successfully changed password")
+                logger.info(f"User {username} successfully changed password")
                 self.protocol.send_acknowledgment(cli_sock)
-            
+
             case _:
-                self.invalid_request(cli_sock, addr, response)    
+                self.invalid_request(cli_sock, addr, response)
 
     def handle_login(self, cli_sock, addr, request: list) -> None:
+        current_time = time()
+        ip = addr[0]
+        # Rate limiting logic
+        if ip in self.login_attempts:
+            count, last_time = self.login_attempts[ip]
+            if current_time - last_time < self.RATE_LIMIT_WINDOW:
+                if count >= self.MAX_ATTEMPTS:
+                    self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
+                    logger.warning(f"Rate limit exceeded for {addr}")
+                    return
+                self.login_attempts[ip] = (count + 1, last_time)
+            else:
+                self.login_attempts[ip] = (1, current_time)
+        else:
+            self.login_attempts[ip] = (1, current_time)
+
         username, password = request[1:]
-        if not self.db_handler.is_username_exist(username):
-            self.protocol.send_error(cli_sock, ErrorCodes.USERNAME_NOT_EXIST.value)
+        if not Settings.MIN_USERNAME_LENGTH.value <= len(username) <= Settings.MAX_USERNAME_LENGTH.value:
+            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_USERNAME.value)
+            logger.warning(f"Invalid username length from {addr}: {username}")
             return
-        if not self.db_handler.is_password_ok(username, password):
-            self.protocol.send_error(cli_sock, ErrorCodes.INCORRECT_PASSWORD.value)
+        if not Settings.MIN_PASSWORD_LENGTH.value <= len(password) <= Settings.MAX_PASSWORD_LENGTH.value:
+            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD.value)
+            logger.warning(f"Invalid password length from {addr}")
             return
+        if not re.search(r"\d", password):
+            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD.value)
+            logger.warning(f"Password missing number from {addr}")
+            return
+
+        if not self.db_handler.is_username_exist(username) or not self.db_handler.is_password_ok(username, password):
+            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_CREDENTIALS.value)
+            logger.warning(f"Failed login attempt for username '{username}' from {addr}")
+            return
+
         self.protocol.send_acknowledgment(cli_sock)
         self.logged_in_users[cli_sock] = username
-        logger.info(f"User logged in successfully: {username}, {password}")
+        logger.info(f"User logged in successfully: {username} from {addr}")
 
     def handle_logout(self, cli_sock, addr) -> None:
         if cli_sock in self.logged_in_users:
@@ -266,8 +298,8 @@ class Server:
             del self.logged_in_users[cli_sock]
             self.protocol.send_acknowledgment(cli_sock)
         else:
-            self.protocol.send_error(cli_sock, ErrorCodes.NOT_LOGGED_IN.value)   
-    
+            self.protocol.send_error(cli_sock, ErrorCodes.NOT_LOGGED_IN.value)
+
     def handle_add_domain(self, cli_sock, addr, request: list) -> None:
         if cli_sock not in self.logged_in_users:
             self.protocol.send_error(cli_sock, ErrorCodes.NOT_LOGGED_IN.value)
@@ -299,14 +331,13 @@ class Server:
         self.domains_db_handler.remove_domain(domain)
         self.protocol.send_acknowledgment(cli_sock)
         logger.info(f"Domain '{domain}' removed by user '{username}'")
-    
+
     def handle_get_blocked_domains(self, cli_sock):
         if cli_sock not in self.logged_in_users:
             self.protocol.send_error(cli_sock, ErrorCodes.NOT_LOGGED_IN.value)
             return
         username = self.logged_in_users[cli_sock]
         blocked_domains = self.domains_db_handler.get_user_blocked_domains(username)
-        # Format the response: domains separated by '|', details separated by ','
         logger.info(f"Blocked domains for user '{username}': {blocked_domains}")
         blocked_domains = [f"{domain},{time_added},{int(still_blocked)}" for domain, time_added, still_blocked in blocked_domains]
         self.protocol.send_blocked_domains_response(cli_sock, blocked_domains)
@@ -322,10 +353,16 @@ class Server:
             del self.logged_in_users[cli_sock]
         cli_sock.close()
         self.semaphore.release()
-            
+
     def run(self):
-        """Run the server application."""
         try:
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(certfile="server.crt", keyfile="server.key")
+            self.srv_sock = context.wrap_socket(self.srv_sock, server_side=True)
+            self.srv_sock.bind((self.ip, self.port))
+            self.srv_sock.listen(Server.BACKLOG)
+            logger.info(f"Server listening on {self.ip}:{self.port} with TLS")
+
             logger.info("Main thread: starting to accept...")
             while True:
                 self.email_code_db_handler.clean_expired_codes()

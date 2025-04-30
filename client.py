@@ -11,6 +11,7 @@ import sys
 import ctypes
 import logging
 import os
+import ssl
 from ctypes import wintypes
 from dns_config import DNSConfig
 
@@ -254,9 +255,13 @@ class Client:
     def connect_to_server(self, ip: str, port: str) -> None:
         try:
             self.server = socket(AF_INET, SOCK_STREAM)
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            self.server = context.wrap_socket(self.server, server_hostname=ip)
             self.server.settimeout(Client.TIMEOUT)
             self.server.connect((ip, int(port)))
-            logger.info(f"Connected to server at {ip}:{port}")
+            logger.info(f"Connected to server at {ip}:{port} with TLS")
         except (ConnectionRefusedError, TimeoutError, OSError) as e:
             logger.error(f"Cannot connect to server at {ip}:{port}: {e}")
             self.window.connect_to_server_window(
@@ -287,6 +292,8 @@ class Client:
                 error_code = self.handle_error(response)
                 match error_code:
                     # TODO: add error codes
+                    case ErrorCodes.INVALID_CREDENTIALS.value:
+                        self.window.login_window("Invalid username or password")
                     case _:
                         self.invalid_response(response)
 
@@ -486,7 +493,6 @@ class Client:
                         tuple(domain_data.split(","))
                         for domain_data in response[1:] if domain_data
                     ]
-                    print(blocked_domains)
                     return blocked_domains
                 
                 case ProtocolOpcodes.ERROR.value:
