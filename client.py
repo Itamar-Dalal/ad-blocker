@@ -12,6 +12,9 @@ import ctypes
 import logging
 import os
 import ssl
+from Crypto.Random import get_random_bytes
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
 from ctypes import wintypes
 from dns_config import DNSConfig
 
@@ -32,6 +35,7 @@ class Client:
         self.server = None
         self.protocol = Protocol()
         self.logged_in = False
+        self.session_key = None  # AES session key
 
     def __repr__(self) -> str:
         """Return a string representation of the Client."""
@@ -262,6 +266,22 @@ class Client:
             self.server.settimeout(Client.TIMEOUT)
             self.server.connect((ip, int(port)))
             logger.info(f"Connected to server at {ip}:{port} with TLS")
+            # --- AES session key exchange with RSA encryption ---
+            self.session_key = get_random_bytes(32)  # AES-256
+            # Load server's public key from file (must match server.key)
+            with open("server.key", "rb") as f:
+                key_data = f.read()
+                # Extract public key from private key file
+                priv_key = RSA.import_key(key_data)
+                pub_key = priv_key.publickey()
+            cipher_rsa = PKCS1_OAEP.new(pub_key)
+            encrypted_session_key = cipher_rsa.encrypt(self.session_key)
+            # Send the length of the encrypted key first (4 bytes, big endian)
+            self.server.sendall(len(encrypted_session_key).to_bytes(4, "big"))
+            self.server.sendall(encrypted_session_key)
+            logger.info("AES session key encrypted and sent to server")
+            self.protocol.tcp_handler.session_key = self.session_key
+            self.protocol.set_session_key(self.session_key)
         except (ConnectionRefusedError, TimeoutError, OSError) as e:
             logger.error(f"Cannot connect to server at {ip}:{port}: {e}")
             self.window.connect_to_server_window(

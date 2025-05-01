@@ -17,6 +17,8 @@ from database import UsersDBHandler, EmailCodeDBHandler, DomainsDBHandler
 from styles import Styles
 from time import time
 import logging
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
 
 IP = "0.0.0.0"
 PORT = 1234
@@ -50,36 +52,45 @@ class Server:
         return cls()
 
     def handle_client(self, cli_sock, addr):
+        session_key = None
         try:
+            # --- AES session key exchange with RSA decryption ---
+            # Receive the length of the encrypted key (4 bytes, big endian)
+            enc_key_len = int.from_bytes(cli_sock.recv(4), "big")
+            encrypted_session_key = b""
+            while len(encrypted_session_key) < enc_key_len:
+                chunk = cli_sock.recv(enc_key_len - len(encrypted_session_key))
+                if not chunk:
+                    raise ConnectionError("Failed to receive encrypted session key")
+                encrypted_session_key += chunk
+            # Load server's private key from file
+            with open("server.key", "rb") as f:
+                priv_key = RSA.import_key(f.read())
+            cipher_rsa = PKCS1_OAEP.new(priv_key)
+            session_key = cipher_rsa.decrypt(encrypted_session_key)
+            self.protocol.tcp_handler.session_key = session_key
+            self.protocol.set_session_key(session_key)
             while True:
                 request = self.protocol.recv_data(cli_sock)
                 opcode = request[0]
                 match opcode:
                     case ProtocolOpcodes.CREATE_USER.value:
                         self.handle_register(cli_sock, addr, request)
-
                     case ProtocolOpcodes.FORGOT_PASSWORD.value:
                         self.handle_forgot_password(cli_sock, addr, request)
-
                     case ProtocolOpcodes.LOGIN.value:
                         self.handle_login(cli_sock, addr, request)
-
                     case ProtocolOpcodes.LOGOUT.value:
                         self.handle_logout(cli_sock, addr)
-
                     case ProtocolOpcodes.ADD_DOMAIN.value:
                         self.handle_add_domain(cli_sock, addr, request)
-
                     case ProtocolOpcodes.REMOVE_DOMAIN.value:
                         self.handle_remove_domain(cli_sock, addr, request)
-
                     case ProtocolOpcodes.GET_BLOCKED_DOMAINS.value:
                         self.handle_get_blocked_domains(cli_sock)
-
                     case _:
                         self.invalid_request(cli_sock, addr, request)
                         return
-
         except Exception as e:
             logger.error(f"Thread for client at {addr} terminated: {e}")
         finally:
@@ -332,7 +343,7 @@ class Server:
         self.protocol.send_acknowledgment(cli_sock)
         logger.info(f"Domain '{domain}' removed by user '{username}'")
 
-    def handle_get_blocked_domains(self, cli_sock):
+    def handle_get_blocked_domains(self, cli_sock) -> None:
         if cli_sock not in self.logged_in_users:
             self.protocol.send_error(cli_sock, ErrorCodes.NOT_LOGGED_IN.value)
             return
@@ -345,7 +356,6 @@ class Server:
     def invalid_request(self, cli_sock, addr, request: list) -> None:
         logger.warning(f"Invalid request received from client at {addr}: {request}")
         self.protocol.send_error(cli_sock, ErrorCodes.INVALID_REQUEST.value)
-        self.close_client_connection(cli_sock, addr)
 
     def close_client_connection(self, cli_sock, addr):
         logger.info(f"Closing connection with client at {addr}...")

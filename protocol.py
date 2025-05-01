@@ -55,61 +55,63 @@ class ErrorCodes(StrEnum):
 class Protocol:
     def __init__(self):
         self.tcp_handler = TCPHandler(True)
+        self.session_key = None
+
+    def set_session_key(self, key: bytes):
+        self.session_key = key
+        self.tcp_handler.session_key = key
 
     def send_create_user(self, sock: socket, username: str, password: str, email: str) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.CREATE_USER.value}|{username}|{password}|{email}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.CREATE_USER.value}|{username}|{password}|{email}", key=self.session_key)
 
     def send_login(self, sock: socket, username: str, password: str) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.LOGIN.value}|{username}|{password}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.LOGIN.value}|{username}|{password}", key=self.session_key)
 
     def send_logout(self, sock: socket) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.LOGOUT.value}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.LOGOUT.value}", key=self.session_key)
 
     def send_verification_code(self, sock: socket, code: str) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.VERIFICATION_CODE.value}|{code}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.VERIFICATION_CODE.value}|{code}", key=self.session_key)
 
     def send_forgot_password(self, sock: socket, email: str) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.FORGOT_PASSWORD.value}|{email}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.FORGOT_PASSWORD.value}|{email}", key=self.session_key)
 
     def send_forgot_password_code(self, sock: socket, code: str) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE.value}|{code}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE.value}|{code}", key=self.session_key)
 
     def send_reset_password(self, sock: socket, new_password: str) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.RESET_PASSWORD.value}|{new_password}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.RESET_PASSWORD.value}|{new_password}", key=self.session_key)
 
     def send_add_domain(self, sock: socket, domain: str) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ADD_DOMAIN.value}|{domain}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ADD_DOMAIN.value}|{domain}", key=self.session_key)
 
     def send_remove_domain(self, sock: socket, domain: str) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.REMOVE_DOMAIN.value}|{domain}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.REMOVE_DOMAIN.value}|{domain}", key=self.session_key)
 
     def send_get_blocked_domains(self, sock: socket) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.GET_BLOCKED_DOMAINS.value}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.GET_BLOCKED_DOMAINS.value}", key=self.session_key)
 
     def send_acknowledgment(self, sock: socket) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ACKNOWLEDGMENT.value}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ACKNOWLEDGMENT.value}", key=self.session_key)
 
     def send_email_code_sent(self, sock: socket) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.EMAIL_VERIFICATION_CODE_SENT.value}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.EMAIL_VERIFICATION_CODE_SENT.value}", key=self.session_key)
 
     def send_verification_code_status(self, sock: socket, is_code_correct: bool) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.VERIFICATION_CODE_CORRECT.value}" if is_code_correct else f"{ProtocolOpcodes.VERIFICATION_CODE_INCORRECT.value}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.VERIFICATION_CODE_CORRECT.value}" if is_code_correct else f"{ProtocolOpcodes.VERIFICATION_CODE_INCORRECT.value}", key=self.session_key)
 
     def send_forgot_password_code_sent(self, sock: socket) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE_SENT.value}")
-
-    def send_forgot_password_code_status(self, sock: socket, is_code_correct: bool) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE_CORRECT.value}" if is_code_correct else f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE_INCORRECT.value}")
-
-    def send_blocked_domains_response(self, sock: socket, blocked_domains: list) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE_SENT.value}", key=self.session_key)
+    
+    def send_blocked_domains_response(self, sock: socket, blocked_domains: list, key=None) -> None:
         domains_str = "|".join(blocked_domains)
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.BLOCKED_DOMAINS_RESPONSE.value}|{domains_str}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.BLOCKED_DOMAINS_RESPONSE.value}|{domains_str}", key=self.session_key)
 
     def send_error(self, sock: socket, error_code: str) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ERROR.value}|{error_code}")
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ERROR.value}|{error_code}", key=self.session_key)
 
     def recv_data(self, sock: socket) -> list:
-        response = self.tcp_handler.recv_by_size(sock)
+        response = self.tcp_handler.recv_by_size(sock, key=self.session_key)
         response = response.split("|")
         if len(response) == 0:
             logger.error("Error in recv_data: invalid response")

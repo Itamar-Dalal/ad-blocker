@@ -13,6 +13,7 @@ class TCPHandler:
 
     def __init__(self, debug=False):
         self.TCP_DEBUG = debug
+        self.session_key = None  # AES session key for convenience
 
     def __log(self, prefix, data, max_to_print=100):
         if not self.TCP_DEBUG:
@@ -54,7 +55,21 @@ class TCPHandler:
     def recv_by_size(self, sock, return_type="string", key=None):
         try:
             data = b""
-            data_len = int(self.__recv_amount(sock, self.size_header_size))
+            size_bytes = self.__recv_amount(sock, self.size_header_size)
+            if not size_bytes or size_bytes == b"":
+                # Socket closed or no data
+                if return_type == "string":
+                    return ""
+                else:
+                    return b""
+            try:
+                data_len = int(size_bytes)
+            except ValueError:
+                logger.error(f"Failed to parse data length header: {size_bytes!r}")
+                if return_type == "string":
+                    return ""
+                else:
+                    return b""
             if not key:
                 data = self.__recv_amount(sock, data_len)
             else:
@@ -73,12 +88,13 @@ class TCPHandler:
         try:
             if type(data) != bytes:
                 data = data.encode()
+            original_data = data
             if key:
                 data = self.encrypt(data, key)
             len_data = str(len(data)).zfill(self.size_header_size).encode()
-            data = len_data + data
-            sock.sendall(data)
-            self.__log("Sent", data)
+            data_to_send = len_data + data
+            sock.sendall(data_to_send)
+            self.__log("Sent (plaintext)", original_data)
         except OSError:
             if __file__ == "client.py":
                 print("Server has disconnected... closing the program")
