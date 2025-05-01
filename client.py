@@ -570,6 +570,15 @@ class Client:
         else:
             self.invalid_response(response)
 
+    def get_current_username(self):
+        self.protocol.send_get_current_username(self.server)
+        response = self.protocol.recv_data(self.server)
+        opcode = response[0]
+        if opcode == ProtocolOpcodes.CURRENT_USERNAME_RESPONSE.value:
+            return response[1] if len(response) > 1 else "guest"
+        else:
+            return "guest"
+
     def handle_error(self, response: list) -> int:
         logger.error(f"Received Error: {' '.join(response)}")
         if len(response) < 2 or not response[1].isnumeric():

@@ -94,6 +94,8 @@ class Server:
                         self.handle_get_all_domains(cli_sock)
                     case ProtocolOpcodes.DELETE_USER.value:
                         self.handle_delete_user(cli_sock, request)
+                    case ProtocolOpcodes.GET_CURRENT_USERNAME.value:
+                        self.handle_get_current_username(cli_sock)
                     case _:
                         self.invalid_request(cli_sock, addr, request)
                         return
@@ -424,6 +426,14 @@ class Server:
         except Exception as e:
             logger.error(f"Error in handle_delete_user: {e}")
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
+
+    def handle_get_current_username(self, cli_sock):
+        username = self.logged_in_users.get(cli_sock, "guest")
+        self.protocol.tcp_handler.send_with_size(
+            cli_sock,
+            f"{ProtocolOpcodes.CURRENT_USERNAME_RESPONSE.value}|{username}",
+            key=self.protocol.session_key
+        )
 
     def invalid_request(self, cli_sock, addr, request: list) -> None:
         logger.warning(f"Invalid request received from client at {addr}: {request}")

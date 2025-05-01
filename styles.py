@@ -217,6 +217,15 @@ class Styles:
                 font-weight: bold;
                 color: #2c3e50;
             """
+            Styles.HELLO_STYLE = """
+            font-size: 20px;
+            margin-left: 3px;
+            font-weight: bold;
+            min-height: 32px;
+            max-height: 32px;
+            line-height: 32px;
+            color: #2c3e50;
+            """
             Styles.INPUT_LABEL_STYLE = """
                 font-size: 18px;
                 font-weight: bold;
@@ -230,6 +239,11 @@ class Styles:
                 font-size: 18px;
                 color: #7f8c8d;
                 margin-bottom: 5px;
+                min-height: 30px;
+                max-height: 30px;
+                line-height: 30px; 
+                margin: 0; 
+                padding: 0;
             """
             Styles.TABLE_STYLE = """
                 QTableWidget {

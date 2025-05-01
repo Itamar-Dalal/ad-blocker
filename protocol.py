@@ -34,6 +34,9 @@ class ProtocolOpcodes(StrEnum):
     FORGOT_PASSWORD_CODE_INCORRECT: str = "FPCW"
     BLOCKED_DOMAINS_RESPONSE: str = "BDRS"
 
+    GET_CURRENT_USERNAME: str = "GCUN"
+    CURRENT_USERNAME_RESPONSE: str = "CUSR"  # Changed from "CUSRSP" to "CUSR"
+
     ERROR: str = "ERRO"
 
 class ErrorCodes(StrEnum):
@@ -123,6 +126,9 @@ class Protocol:
 
     def send_delete_user(self, sock: socket, username: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.DELETE_USER.value}|{username}", key=self.session_key)
+
+    def send_get_current_username(self, sock: socket) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.GET_CURRENT_USERNAME.value}", key=self.session_key)
 
     def recv_data(self, sock: socket) -> list:
         response = self.tcp_handler.recv_by_size(sock, key=self.session_key)

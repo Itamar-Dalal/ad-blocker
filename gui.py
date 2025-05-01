@@ -169,10 +169,31 @@ class GUI(QMainWindow):
         title.setGraphicsEffect(shadow_effect)
         layout.addWidget(title)
 
+        label_grid = QGridLayout()
+        label_grid.setContentsMargins(0, 0, 0, 0)
+        label_grid.setHorizontalSpacing(0)
+
+        try:
+            username = self.client.get_current_username()
+        except Exception:
+            username = "guest"
+        hello_label = QLabel(f"Hello <span style='color:#3498db;'>{username}</span>")
+        hello_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        hello_label.setStyleSheet(Styles.HELLO_STYLE)
+        hello_label.setFixedHeight(30)
+        label_grid.addWidget(hello_label, 0, 0, 1, 1)
+
         subtitle = QLabel("Domain Blocking and Management")
-        subtitle.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
         subtitle.setStyleSheet(Styles.SUBTITLE_STYLE)
-        layout.addWidget(subtitle)
+        subtitle.setFixedHeight(30)
+        label_grid.addWidget(subtitle, 0, 1, 1, 1, Qt.AlignmentFlag.AlignHCenter)
+
+        label_grid.setColumnStretch(0, 1)
+        label_grid.setColumnStretch(1, 2)
+        label_grid.setColumnStretch(2, 1)
+
+        layout.addLayout(label_grid)
 
         logo_label = QLabel()
         pixmap = QPixmap(Styles.LOGO_PATH)
