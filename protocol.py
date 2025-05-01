@@ -20,6 +20,11 @@ class ProtocolOpcodes(StrEnum):
     ADD_DOMAIN: str = "ADDM"
     REMOVE_DOMAIN: str = "REMD"
     GET_BLOCKED_DOMAINS: str = "GBDM"
+    GET_ALL_USERS: str = "GAUS"
+    ALL_USERS_RESPONSE: str = "AUSR"
+    GET_ALL_DOMAINS: str = "GADM"
+    ALL_DOMAINS_RESPONSE: str = "ADMR"
+    DELETE_USER: str = "DUSR"
 
     EMAIL_VERIFICATION_CODE_SENT: str = "EVCS"
     VERIFICATION_CODE_CORRECT: str = "CDEK"
@@ -109,6 +114,15 @@ class Protocol:
 
     def send_error(self, sock: socket, error_code: str) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ERROR.value}|{error_code}", key=self.session_key)
+
+    def send_get_all_users(self, sock: socket) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.GET_ALL_USERS.value}", key=self.session_key)
+
+    def send_get_all_domains(self, sock: socket) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.GET_ALL_DOMAINS.value}", key=self.session_key)
+
+    def send_delete_user(self, sock: socket, username: str) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.DELETE_USER.value}|{username}", key=self.session_key)
 
     def recv_data(self, sock: socket) -> list:
         response = self.tcp_handler.recv_by_size(sock, key=self.session_key)

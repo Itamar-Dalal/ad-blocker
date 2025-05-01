@@ -10,6 +10,7 @@ from registry import RegistryHandler
 from typing import Any
 from dns_config import DNSConfig
 from datetime import datetime
+from database import UsersDBHandler, DomainsDBHandler
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -762,7 +763,182 @@ class GUI(QMainWindow):
         logger.info("Navigated to Connect to DNS Window")
 
     def admin_panel_window(self, error_msg=None):
-        pass
+        self.setFixedSize(Styles.WINDOW_WIDTH + 400, Styles.WINDOW_HEIGHT + 200)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
+
+        label = QLabel("Admin Panel")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(Styles.TITLE_STYLE)
+        layout.addWidget(label)
+
+        button_layout = QHBoxLayout()
+        users_button = QPushButton("Users Table")
+        users_button.setStyleSheet(Styles.BUTTON_STYLE)
+        users_button.clicked.connect(self.show_users_table)
+        button_layout.addWidget(users_button)
+
+        domains_button = QPushButton("Domains Table")
+        domains_button.setStyleSheet(Styles.BUTTON_STYLE)
+        domains_button.clicked.connect(self.show_domains_table)
+        button_layout.addWidget(domains_button)
+
+        layout.addLayout(button_layout)
+
+        if error_msg:
+            error_label = QLabel(error_msg)
+            error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            error_label.setStyleSheet(Styles.ERROR_STYLE)
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+            logger.error(f"Error in admin_panel_window: {error_msg}")
+
+        return_button = QPushButton("Return Home")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(self.home_window)
+        layout.addWidget(return_button)
+
+        central_widget.setLayout(layout)
+        logger.info("Navigated to Admin Panel Window")
+
+    def show_users_table(self):
+        self.setFixedSize(Styles.WINDOW_WIDTH + 600, Styles.WINDOW_HEIGHT + 300)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
+
+        label = QLabel("Users Table")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(Styles.TITLE_STYLE)
+        layout.addWidget(label)
+
+        search_layout = QHBoxLayout()
+        search_label = QLabel("Search User:")
+        search_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
+        search_input = QLineEdit()
+        search_input.setPlaceholderText("Enter username")
+        search_input.setStyleSheet(Styles.INPUT_STYLE)
+        search_button = QPushButton("Search")
+        search_button.setStyleSheet(Styles.BUTTON_STYLE)
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(search_input)
+        search_layout.addWidget(search_button)
+        layout.addLayout(search_layout)
+
+        table = QTableWidget()
+        table.setColumnCount(5)
+        table.setHorizontalHeaderLabels(["Username", "Email", "Password Hash", "Salt", "Delete"])
+        table.setStyleSheet(Styles.TABLE_STYLE)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        users = self.client.get_all_users()
+        table.setRowCount(len(users))
+        for row, (username, email, password, salt) in enumerate(users):
+            table.setItem(row, 0, QTableWidgetItem(username))
+            table.setItem(row, 1, QTableWidgetItem(email))
+            table.setItem(row, 2, QTableWidgetItem(password))
+            table.setItem(row, 3, QTableWidgetItem(str(salt)))
+            delete_btn = QPushButton("Delete")
+            delete_btn.setStyleSheet(Styles.BUTTON_STYLE)
+            delete_btn.clicked.connect(lambda _, uname=username: self.delete_user_from_server(uname))
+            table.setCellWidget(row, 4, delete_btn)
+
+        def search_user():
+            uname = search_input.text().strip()
+            if not uname:
+                logger.warning("Search input is empty")
+                return
+            for row in range(table.rowCount()):
+                if table.item(row, 0) and table.item(row, 0).text() == uname:
+                    table.selectRow(row)
+                    table.scrollToItem(table.item(row, 0), QAbstractItemView.ScrollHint.PositionAtCenter)
+                    logger.info(f"User '{uname}' found at row {row}")
+                    return
+            logger.warning(f"User '{uname}' not found in the table")
+
+        search_button.clicked.connect(search_user)
+        layout.addWidget(table)
+
+        return_button = QPushButton("Return To Admin Panel")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(self.admin_panel_window)
+        layout.addWidget(return_button)
+
+        central_widget.setLayout(layout)
+        logger.info("Navigated to Users Table in Admin Panel")
+
+    def delete_user_from_server(self, username):
+        self.client.delete_user(username)
+        self.show_users_table()
+
+    def show_domains_table(self):
+        self.setFixedSize(Styles.WINDOW_WIDTH + 600, Styles.WINDOW_HEIGHT + 300)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
+
+        label = QLabel("Domains Table")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(Styles.TITLE_STYLE)
+        layout.addWidget(label)
+
+        search_layout = QHBoxLayout()
+        search_label = QLabel("Search Domain:")
+        search_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
+        search_input = QLineEdit()
+        search_input.setPlaceholderText("Enter domain name")
+        search_input.setStyleSheet(Styles.INPUT_STYLE)
+        search_button = QPushButton("Search")
+        search_button.setStyleSheet(Styles.BUTTON_STYLE)
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(search_input)
+        search_layout.addWidget(search_button)
+        layout.addLayout(search_layout)
+
+        table = QTableWidget()
+        table.setColumnCount(4)
+        table.setHorizontalHeaderLabels(["Domain", "Username", "Time Added", "Source"])
+        table.setStyleSheet(Styles.TABLE_STYLE)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        domains = self.client.get_all_domains()
+        table.setRowCount(len(domains))
+        for row, (domain, username, time_added, source) in enumerate(domains):
+            table.setItem(row, 0, QTableWidgetItem(domain))
+            table.setItem(row, 1, QTableWidgetItem(username))
+            try:
+                readable_time = datetime.fromtimestamp(float(time_added)).strftime('%Y-%m-%d %H:%M:%S')
+            except Exception:
+                readable_time = str(time_added)
+            table.setItem(row, 2, QTableWidgetItem(readable_time))
+            table.setItem(row, 3, QTableWidgetItem(source if source else ""))
+
+        def search_domain():
+            dname = search_input.text().strip()
+            if not dname:
+                logger.warning("Search input is empty")
+                return
+            for row in range(table.rowCount()):
+                if table.item(row, 0) and table.item(row, 0).text() == dname:
+                    table.selectRow(row)
+                    table.scrollToItem(table.item(row, 0), QAbstractItemView.ScrollHint.PositionAtCenter)
+                    logger.info(f"Domain '{dname}' found at row {row}")
+                    return
+            logger.warning(f"Domain '{dname}' not found in the table")
+
+        search_button.clicked.connect(search_domain)
+        layout.addWidget(table)
+
+        return_button = QPushButton("Return To Admin Panel")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(self.admin_panel_window)
+        layout.addWidget(return_button)
+
+        central_widget.setLayout(layout)
+        logger.info("Navigated to Domains Table in Admin Panel")
 
     def settings_window(self):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)

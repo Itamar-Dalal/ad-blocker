@@ -529,6 +529,47 @@ class Client:
             logger.error(f"Failed to get blocked domains: {e}")
             return []
 
+    def get_all_users(self):
+        self.protocol.send_get_all_users(self.server)
+        response = self.protocol.recv_data(self.server)
+        opcode = response[0]
+        if opcode == ProtocolOpcodes.ALL_USERS_RESPONSE.value:
+            # Each user: username,email,password,salt
+            users = [tuple(user.split(",")) for user in response[1:] if user]
+            return users
+        elif opcode == ProtocolOpcodes.ERROR.value:
+            logger.error("Failed to get all users from server")
+            return []
+        else:
+            self.invalid_response(response)
+
+    def get_all_domains(self):
+        self.protocol.send_get_all_domains(self.server)
+        response = self.protocol.recv_data(self.server)
+        opcode = response[0]
+        if opcode == ProtocolOpcodes.ALL_DOMAINS_RESPONSE.value:
+            # Each domain: domain,username,time,source
+            domains = [tuple(domain.split(",")) for domain in response[1:] if domain]
+            return domains
+        elif opcode == ProtocolOpcodes.ERROR.value:
+            logger.error("Failed to get all domains from server")
+            return []
+        else:
+            self.invalid_response(response)
+
+    def delete_user(self, username):
+        self.protocol.send_delete_user(self.server, username)
+        response = self.protocol.recv_data(self.server)
+        opcode = response[0]
+        if opcode == ProtocolOpcodes.ACKNOWLEDGMENT.value:
+            logger.info(f"User '{username}' deleted successfully")
+            return True
+        elif opcode == ProtocolOpcodes.ERROR.value:
+            logger.error(f"Failed to delete user '{username}'")
+            return False
+        else:
+            self.invalid_response(response)
+
     def handle_error(self, response: list) -> int:
         logger.error(f"Received Error: {' '.join(response)}")
         if len(response) < 2 or not response[1].isnumeric():

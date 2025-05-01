@@ -88,6 +88,12 @@ class Server:
                         self.handle_remove_domain(cli_sock, addr, request)
                     case ProtocolOpcodes.GET_BLOCKED_DOMAINS.value:
                         self.handle_get_blocked_domains(cli_sock)
+                    case ProtocolOpcodes.GET_ALL_USERS.value:
+                        self.handle_get_all_users(cli_sock)
+                    case ProtocolOpcodes.GET_ALL_DOMAINS.value:
+                        self.handle_get_all_domains(cli_sock)
+                    case ProtocolOpcodes.DELETE_USER.value:
+                        self.handle_delete_user(cli_sock, request)
                     case _:
                         self.invalid_request(cli_sock, addr, request)
                         return
@@ -352,6 +358,72 @@ class Server:
         logger.info(f"Blocked domains for user '{username}': {blocked_domains}")
         blocked_domains = [f"{domain},{time_added},{int(still_blocked)}" for domain, time_added, still_blocked in blocked_domains]
         self.protocol.send_blocked_domains_response(cli_sock, blocked_domains)
+
+    def handle_get_all_users(self, cli_sock):
+        try:
+            with self.db_handler.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT username, email, password, salt FROM users")
+                users = cursor.fetchall()
+            # Each user as username,email,password,salt (salt as hex for transport)
+            user_strs = [
+                f"{username},{email},{password},{salt.hex() if isinstance(salt, bytes) else salt}"
+                for username, email, password, salt in users
+            ]
+            self.protocol.tcp_handler.send_with_size(
+                cli_sock,
+                f"{ProtocolOpcodes.ALL_USERS_RESPONSE.value}|{'|'.join(user_strs)}",
+                key=self.protocol.session_key
+            )
+        except Exception as e:
+            logger.error(f"Error in handle_get_all_users: {e}")
+            self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
+
+    def handle_get_all_domains(self, cli_sock):
+        try:
+            with self.domains_db_handler.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT domain, username, time, source FROM domains")
+                domains = cursor.fetchall()
+            # Each domain as domain,username,time,source
+            domain_strs = [
+                f"{domain},{username},{time_added},{source if source else ''}"
+                for domain, username, time_added, source in domains
+            ]
+            self.protocol.tcp_handler.send_with_size(
+                cli_sock,
+                f"{ProtocolOpcodes.ALL_DOMAINS_RESPONSE.value}|{'|'.join(domain_strs)}",
+                key=self.protocol.session_key
+            )
+        except Exception as e:
+            logger.error(f"Error in handle_get_all_domains: {e}")
+            self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
+
+    def handle_delete_user(self, cli_sock, request):
+        try:
+            if len(request) < 2:
+                self.protocol.send_error(cli_sock, ErrorCodes.INVALID_REQUEST.value)
+                return
+            username = request[1]
+            # Remove from DB
+            self.db_handler.delete_user(username)
+            # Forcibly log out if connected
+            to_remove = []
+            for sock, uname in self.logged_in_users.items():
+                if uname == username:
+                    try:
+                        self.protocol.send_acknowledgment(sock)
+                        sock.close()
+                    except Exception:
+                        pass
+                    to_remove.append(sock)
+            for sock in to_remove:
+                del self.logged_in_users[sock]
+            self.protocol.send_acknowledgment(cli_sock)
+            logger.info(f"User '{username}' deleted (and logged out if connected)")
+        except Exception as e:
+            logger.error(f"Error in handle_delete_user: {e}")
+            self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def invalid_request(self, cli_sock, addr, request: list) -> None:
         logger.warning(f"Invalid request received from client at {addr}: {request}")
