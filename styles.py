@@ -110,6 +110,25 @@ class Styles:
         }
     """
     
+    DELETE_BUTTON_STYLE = """
+        QPushButton {
+            background-color: #e74c3c;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 15px;
+            padding: 10px 20px;
+            border: 2px solid #c0392b;
+        }
+        QPushButton:hover {
+            background-color: #c0392b;
+        }
+        QPushButton:pressed {
+            background-color: #992d22;
+            border: 2px solid #7f241b;
+        }
+    """
+    
     DISABLED_BUTTON_STYLE = """
         QPushButton {
             background-color: #b0b0b0;

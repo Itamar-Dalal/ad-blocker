@@ -788,7 +788,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Connect to DNS Window")
 
     def admin_panel_window(self, error_msg=None):
-        self.setFixedSize(Styles.WINDOW_WIDTH + 400, Styles.WINDOW_HEIGHT + 200)
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -797,6 +797,13 @@ class GUI(QMainWindow):
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet(Styles.TITLE_STYLE)
         layout.addWidget(label)
+
+        admin_logo_label = QLabel()
+        admin_logo_pixmap = QPixmap("assets/images/admin_logo.png")
+        admin_logo_pixmap = admin_logo_pixmap.scaled(160, 300, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        admin_logo_label.setPixmap(admin_logo_pixmap)
+        admin_logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(admin_logo_label)
 
         button_layout = QHBoxLayout()
         users_button = QPushButton("Users Table")
@@ -861,13 +868,20 @@ class GUI(QMainWindow):
         users = self.client.get_all_users()
         table.setRowCount(len(users))
         for row, (username, email, password, salt) in enumerate(users):
-            table.setItem(row, 0, QTableWidgetItem(username))
             table.setItem(row, 1, QTableWidgetItem(email))
             table.setItem(row, 2, QTableWidgetItem(password))
             table.setItem(row, 3, QTableWidgetItem(str(salt)))
-            delete_btn = QPushButton("Delete")
-            delete_btn.setStyleSheet(Styles.BUTTON_STYLE)
-            delete_btn.clicked.connect(lambda _, uname=username: self.delete_user_from_server(uname))
+            delete_btn = QPushButton()
+            delete_btn.setStyleSheet(Styles.DELETE_BUTTON_STYLE)
+            if username == Settings.ADMIN_USERNAME.value:
+                delete_btn.setEnabled(False)
+                delete_btn.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)
+                delete_btn.enterEvent = lambda event: QApplication.setOverrideCursor(Qt.CursorShape.ForbiddenCursor)
+                delete_btn.leaveEvent = lambda event: QApplication.restoreOverrideCursor()
+                table.setItem(row, 0, QTableWidgetItem(f"{username} (admin)"))
+            else:
+                delete_btn.clicked.connect(lambda _, uname=username: self.delete_user_from_server(uname))
+                table.setItem(row, 0, QTableWidgetItem(username))
             table.setCellWidget(row, 4, delete_btn)
 
         def search_user():

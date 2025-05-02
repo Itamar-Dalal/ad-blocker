@@ -416,6 +416,9 @@ class Server:
                 self.protocol.send_error(cli_sock, ErrorCodes.INVALID_REQUEST.value)
                 return
             username = request[1]
+            if username == Settings.ADMIN_USERNAME.value:
+                self.protocol.send_error(cli_sock, ErrorCodes.CANNOT_DELETE_ADMIN.value)
+                return
             self.db_handler.delete_user(username)
             # Forcibly log out if connected
             to_remove = []
