@@ -309,6 +309,8 @@ class DomainsDBHandler:
             return domains
 
 if __name__ == "__main__":
-    db_test = UsersDBHandler()
-    domain_db = DomainsDBHandler()
-    domain_db.expand_domains_from_datasets()
+    #domain_db = DomainsDBHandler()
+    #domain_db.expand_domains_from_datasets()
+    #db = UsersDBHandler()
+    #db.save_user(Settings.ADMIN_USERNAME, "dalalcyber@gmail.com", "dllilo05")
+    pass

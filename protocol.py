@@ -59,6 +59,7 @@ class ErrorCodes(StrEnum):
     DOMAIN_NOT_EXIST: str = "17"
     INVALID_DOMAIN: str = "18"
     INVALID_CREDENTIALS: str = "19"
+    NOT_ADMIN: str = "20"
 
 class Protocol:
     def __init__(self):

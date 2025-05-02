@@ -363,6 +363,9 @@ class Server:
 
     def handle_get_all_users(self, cli_sock):
         try:
+            if cli_sock not in self.logged_in_users or self.logged_in_users[cli_sock] != Settings.ADMIN_USERNAME.value:
+                self.protocol.send_error(cli_sock, ErrorCodes.NOT_ADMIN.value)
+                return
             with self.db_handler.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT username, email, password, salt FROM users")
@@ -383,6 +386,9 @@ class Server:
 
     def handle_get_all_domains(self, cli_sock):
         try:
+            if cli_sock not in self.logged_in_users or self.logged_in_users[cli_sock] != Settings.ADMIN_USERNAME.value:
+                self.protocol.send_error(cli_sock, ErrorCodes.NOT_ADMIN.value)
+                return
             with self.domains_db_handler.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT domain, username, time, source FROM domains")
@@ -403,11 +409,13 @@ class Server:
 
     def handle_delete_user(self, cli_sock, request):
         try:
+            if cli_sock not in self.logged_in_users or self.logged_in_users[cli_sock] != Settings.ADMIN_USERNAME.value:
+                self.protocol.send_error(cli_sock, ErrorCodes.NOT_ADMIN.value)
+                return
             if len(request) < 2:
                 self.protocol.send_error(cli_sock, ErrorCodes.INVALID_REQUEST.value)
                 return
             username = request[1]
-            # Remove from DB
             self.db_handler.delete_user(username)
             # Forcibly log out if connected
             to_remove = []
@@ -428,7 +436,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def handle_get_current_username(self, cli_sock):
-        username = self.logged_in_users.get(cli_sock, "guest")
+        username = f"{self.logged_in_users.get(cli_sock, 'guest')}{' (admin)' if cli_sock in self.logged_in_users and self.logged_in_users[cli_sock] == Settings.ADMIN_USERNAME.value else ''}"
         self.protocol.tcp_handler.send_with_size(
             cli_sock,
             f"{ProtocolOpcodes.CURRENT_USERNAME_RESPONSE.value}|{username}",

@@ -20,3 +20,5 @@ class Settings(Enum):
     EMAIL_CODE_TIMEOUT: int = 300  # 5 minutes
 
     DATABASE_PATH = b"adblocker.db"
+
+    ADMIN_USERNAME: str = "system"

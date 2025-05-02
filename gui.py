@@ -11,6 +11,7 @@ from typing import Any
 from dns_config import DNSConfig
 from datetime import datetime
 from database import UsersDBHandler, DomainsDBHandler
+from settings import Settings
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -227,7 +228,10 @@ class GUI(QMainWindow):
             button = QPushButton(button_text)
             button.setStyleSheet(Styles.BUTTON_STYLE)
             button.setFixedSize(Styles.BUTTON_WIDTH, Styles.BUTTON_HEIGHT)
-            if (not self.logged_in and enabled and not enabled[0]) or (self.logged_in and enabled and enabled[0]):
+            # Use Settings.ADMIN_USERNAME.value for admin check
+            if (not self.logged_in and enabled and not enabled[0]) or \
+               (self.logged_in and enabled and enabled[0]) or \
+               (self.logged_in and button_text == "Admin Panel" and username != f"{Settings.ADMIN_USERNAME.value} (admin)"):
                 button.setEnabled(False)
                 button.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)
                 button.enterEvent = lambda event: QApplication.setOverrideCursor(Qt.CursorShape.ForbiddenCursor)
