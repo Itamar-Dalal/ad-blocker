@@ -311,15 +311,20 @@ class Client:
             case ProtocolOpcodes.ERROR.value:
                 error_code = self.handle_error(response)
                 match error_code:
-                    # TODO: add error codes
+                    case ErrorCodes.INVALID_USERNAME.value:
+                        self.window.login_window("Invalid username length.")
+                    case ErrorCodes.INVALID_PASSWORD.value:
+                        self.window.login_window("Invalid password. Must be 5-20 characters and contain at least one number.")
                     case ErrorCodes.INVALID_CREDENTIALS.value:
-                        self.window.login_window("Invalid username or password")
+                        self.window.login_window("Invalid username or password.")
+                    case ErrorCodes.SERVER_ERROR.value:
+                        self.window.login_window("Too many failed attempts. Please try again later.")
                     case _:
                         self.invalid_response(response)
 
             case _:
                 self.invalid_response(response)
-    
+
     def logout(self) -> None:
         self.protocol.send_logout(self.server)
         response = self.protocol.recv_data(self.server)
@@ -357,9 +362,11 @@ class Client:
                 error_code = self.handle_error(response)
                 match error_code:
                     case ErrorCodes.DOMAIN_IN_USE.value:
-                        self.window.block_domain_window(f"Domain '{domain}' already blocked")
+                        self.window.block_domain_window(f"Domain '{domain}' already blocked.")
                     case ErrorCodes.NOT_LOGGED_IN.value:
-                        self.window.block_domain_window("You must be logged in to add a domain")
+                        self.window.block_domain_window("You must be logged in to add a domain.")
+                    case ErrorCodes.INVALID_DOMAIN.value:
+                        self.window.block_domain_window("Invalid domain format.")
                     case _:
                         self.invalid_response(response)
             case _:
@@ -380,9 +387,11 @@ class Client:
                 error_code = self.handle_error(response)
                 match error_code:
                     case ErrorCodes.DOMAIN_NOT_EXIST.value:
-                        self.window.unblock_domain_window(f"Domain '{domain}' does not exist")
+                        self.window.unblock_domain_window(f"Domain '{domain}' does not exist.")
                     case ErrorCodes.NOT_LOGGED_IN.value:
-                        self.window.unblock_domain_window("You must be logged in to remove a domain")
+                        self.window.unblock_domain_window("You must be logged in to remove a domain.")
+                    case ErrorCodes.INVALID_DOMAIN.value:
+                        self.window.unblock_domain_window("Invalid domain format.")
                     case _:
                         self.invalid_response(response)
             case _:
@@ -401,7 +410,16 @@ class Client:
             case ProtocolOpcodes.ERROR.value:
                 error_code = self.handle_error(response)
                 match error_code:
-                    # TODO: add error codes
+                    case ErrorCodes.INVALID_USERNAME.value:
+                        self.window.create_account_window("Invalid username. Must be 3-20 characters.")
+                    case ErrorCodes.INVALID_PASSWORD.value:
+                        self.window.create_account_window("Invalid password. Must be 5-20 characters and contain at least one number.")
+                    case ErrorCodes.INVALID_EMAIL.value:
+                        self.window.create_account_window("Invalid email format.")
+                    case ErrorCodes.USERNAME_IN_USE.value:
+                        self.window.create_account_window("Username already in use.")
+                    case ErrorCodes.EMAIL_IN_USE.value:
+                        self.window.create_account_window("Email already in use.")
                     case _:
                         self.invalid_response(response)
 
@@ -428,7 +446,10 @@ class Client:
             case ProtocolOpcodes.ERROR.value:
                 error_code = self.handle_error(response)
                 match error_code:
-                    # TODO: add error codes
+                    case ErrorCodes.INVALID_CODE.value:
+                        self.window.email_verification_window("Invalid code format.")
+                    case ErrorCodes.CODE_EXPIRED.value:
+                        self.window.email_verification_window("Verification code expired. Please request a new one.")
                     case _:
                         self.invalid_response(response)
 
@@ -446,11 +467,14 @@ class Client:
                 return
             
             case ProtocolOpcodes.ERROR.value:
-               error_code = self.handle_error(response)
-               match error_code:
-                   # TODO: add error codes
-                   case _:
-                       self.invalid_response(response)
+                error_code = self.handle_error(response)
+                match error_code:
+                    case ErrorCodes.INVALID_EMAIL.value:
+                        self.window.forgot_password_window("Invalid email format.")
+                    case ErrorCodes.EMAIL_NOT_EXIST.value:
+                        self.window.forgot_password_window("Email does not exist.")
+                    case _:
+                        self.invalid_response(response)
 
             case _:
                 self.invalid_response(response)
@@ -474,9 +498,12 @@ class Client:
             case ProtocolOpcodes.ERROR.value:
                 error_code = self.handle_error(response)
                 match error_code:
-                    # TODO: add error codes
+                    case ErrorCodes.INVALID_CODE.value:
+                        self.window.forgot_password_code_window("Invalid code format.")
+                    case ErrorCodes.CODE_EXPIRED.value:
+                        self.window.forgot_password_code_window("Verification code expired. Please request a new one.")
                     case _:
-                       self.invalid_response(response)
+                        self.invalid_response(response)
 
             case _:
                 self.invalid_response(response)
@@ -495,9 +522,10 @@ class Client:
             case ProtocolOpcodes.ERROR.value:
                 error_code = self.handle_error(response)
                 match error_code:
-                    # TODO: add error codes
+                    case ErrorCodes.INVALID_PASSWORD.value:
+                        self.window.reset_password_window("Invalid password. Must be 5-20 characters and contain at least one number.")
                     case _:
-                       self.invalid_response(response)
+                        self.invalid_response(response)
 
             case _:
                 self.invalid_response(response)
@@ -518,9 +546,10 @@ class Client:
                 case ProtocolOpcodes.ERROR.value:
                     error_code = self.handle_error(response)
                     match error_code:
-                        # TODO: add error codes
+                        case ErrorCodes.NOT_LOGGED_IN.value:
+                            self.window.history_window("You must be logged in to view blocked domains.")
                         case _:
-                           self.invalid_response(response)
+                            self.invalid_response(response)
 
                 case _:
                     self.invalid_response(response)
@@ -538,7 +567,12 @@ class Client:
             users = [tuple(user.split(",")) for user in response[1:] if user]
             return users
         elif opcode == ProtocolOpcodes.ERROR.value:
-            logger.error("Failed to get all users from server")
+            error_code = self.handle_error(response)
+            match error_code:
+                case ErrorCodes.NOT_ADMIN.value:
+                    self.window.admin_panel_window("You must be admin to view users.")
+                case _:
+                    logger.error("Failed to get all users from server")
             return []
         else:
             self.invalid_response(response)
@@ -552,7 +586,12 @@ class Client:
             domains = [tuple(domain.split(",")) for domain in response[1:] if domain]
             return domains
         elif opcode == ProtocolOpcodes.ERROR.value:
-            logger.error("Failed to get all domains from server")
+            error_code = self.handle_error(response)
+            match error_code:
+                case ErrorCodes.NOT_ADMIN.value:
+                    self.window.admin_panel_window("You must be admin to view domains.")
+                case _:
+                    logger.error("Failed to get all domains from server")
             return []
         else:
             self.invalid_response(response)
@@ -565,7 +604,16 @@ class Client:
             logger.info(f"User '{username}' deleted successfully")
             return True
         elif opcode == ProtocolOpcodes.ERROR.value:
-            logger.error(f"Failed to delete user '{username}'")
+            error_code = self.handle_error(response)
+            match error_code:
+                case ErrorCodes.NOT_ADMIN.value:
+                    self.window.show_users_table()
+                    logger.error("You must be admin to delete users.")
+                case ErrorCodes.CANNOT_DELETE_ADMIN.value:
+                    self.window.show_users_table()
+                    logger.error("Cannot delete admin user.")
+                case _:
+                    logger.error(f"Failed to delete user '{username}'")
             return False
         else:
             self.invalid_response(response)

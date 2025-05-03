@@ -236,15 +236,6 @@ class Styles:
                 font-weight: bold;
                 color: #2c3e50;
             """
-            Styles.HELLO_STYLE = """
-            font-size: 20px;
-            margin-left: 3px;
-            font-weight: bold;
-            min-height: 32px;
-            max-height: 32px;
-            line-height: 32px;
-            color: #2c3e50;
-            """
             Styles.INPUT_LABEL_STYLE = """
                 font-size: 18px;
                 font-weight: bold;
@@ -286,6 +277,15 @@ class Styles:
                     background-color: #2980b9;
                     color: white;
                 }
+            """
+            Styles.HELLO_STYLE = """
+                font-size: 20px;
+                margin-left: 3px;
+                font-weight: bold;
+                min-height: 32px;
+                max-height: 32px;
+                line-height: 32px;
+                color: #2c3e50;
             """
         else:
             Styles.TABLE_STYLE = """
@@ -380,4 +380,13 @@ class Styles:
                 font-size: 18px;
                 color: #c8c8c8;
                 margin-bottom: 5px;
+            """
+            Styles.HELLO_STYLE = """
+                font-size: 20px;
+                margin-left: 3px;
+                font-weight: bold;
+                min-height: 32px;
+                max-height: 32px;
+                line-height: 32px;
+                color: #e8e8e8;
             """
