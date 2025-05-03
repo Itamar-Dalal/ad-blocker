@@ -279,7 +279,7 @@ class Server:
             count, last_time = self.login_attempts[ip]
             if current_time - last_time < self.RATE_LIMIT_WINDOW:
                 if count >= self.MAX_ATTEMPTS:
-                    self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
+                    self.protocol.send_error(cli_sock, ErrorCodes.TOO_MANY_ATTEMPTS.value)
                     logger.warning(f"Rate limit exceeded for {addr}")
                     return
                 self.login_attempts[ip] = (count + 1, last_time)

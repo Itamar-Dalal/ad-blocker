@@ -61,6 +61,7 @@ class ErrorCodes(StrEnum):
     INVALID_CREDENTIALS: str = "19"
     NOT_ADMIN: str = "20"
     CANNOT_DELETE_ADMIN: str = "21"
+    TOO_MANY_ATTEMPTS: str = "22"  # Added for rate limiting
 
 class Protocol:
     def __init__(self):

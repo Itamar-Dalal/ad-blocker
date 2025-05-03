@@ -317,8 +317,10 @@ class Client:
                         self.window.login_window("Invalid password. Must be 5-20 characters and contain at least one number.")
                     case ErrorCodes.INVALID_CREDENTIALS.value:
                         self.window.login_window("Invalid username or password.")
-                    case ErrorCodes.SERVER_ERROR.value:
+                    case ErrorCodes.TOO_MANY_ATTEMPTS.value:
                         self.window.login_window("Too many failed attempts. Please try again later.")
+                    case ErrorCodes.SERVER_ERROR.value:
+                        self.window.login_window("Server error.")
                     case _:
                         self.invalid_response(response)
 
