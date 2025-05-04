@@ -389,14 +389,11 @@ class Server:
             if cli_sock not in self.logged_in_users or self.logged_in_users[cli_sock] != Settings.ADMIN_USERNAME.value:
                 self.protocol.send_error(cli_sock, ErrorCodes.NOT_ADMIN.value)
                 return
-            with self.domains_db_handler.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT domain, username, time, source FROM domains")
-                domains = cursor.fetchall()
-            # Each domain as domain,username,time,source
+            domains = self.domains_db_handler.get_all_domains()
+            # Each domain as domain,username,time,source,is_blocked
             domain_strs = [
-                f"{domain},{username},{time_added},{source if source else ''}"
-                for domain, username, time_added, source in domains
+                f"{domain},{username},{time_added},{source if source else ''},{is_blocked}"
+                for domain, username, time_added, source, is_blocked in domains
             ]
             self.protocol.tcp_handler.send_with_size(
                 cli_sock,

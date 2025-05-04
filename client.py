@@ -584,7 +584,7 @@ class Client:
         response = self.protocol.recv_data(self.server)
         opcode = response[0]
         if opcode == ProtocolOpcodes.ALL_DOMAINS_RESPONSE.value:
-            # Each domain: domain,username,time,source
+            # Each domain: domain,username,time,source,is_blocked
             domains = [tuple(domain.split(",")) for domain in response[1:] if domain]
             return domains
         elif opcode == ProtocolOpcodes.ERROR.value:

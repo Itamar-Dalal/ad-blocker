@@ -28,7 +28,7 @@ class DNSHandler:
     def __init__(self, listen_ip: str = "0.0.0.0", listen_port: int = DNS_PORT) -> None:
         self.listen_ip = listen_ip
         self.listen_port = listen_port
-        self.blocked_domains = set(DomainsDBHandler().get_domains())
+        self.blocked_domains = set(DomainsDBHandler().get_domains())  # Only blocked domains
         self.udp_handler = UDPHandler()
         self.sockets = []
         self.active_resolvers = []

@@ -937,15 +937,15 @@ class GUI(QMainWindow):
         layout.addLayout(search_layout)
 
         table = QTableWidget()
-        table.setColumnCount(4)
-        table.setHorizontalHeaderLabels(["Domain", "Username", "Time Added", "Source"])
+        table.setColumnCount(5)
+        table.setHorizontalHeaderLabels(["Domain", "Username", "Time Added", "Source", "Currently Blocked"])
         table.setStyleSheet(Styles.TABLE_STYLE)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         domains = self.client.get_all_domains()
         table.setRowCount(len(domains))
-        for row, (domain, username, time_added, source) in enumerate(domains):
+        for row, (domain, username, time_added, source, is_blocked) in enumerate(domains):
             table.setItem(row, 0, QTableWidgetItem(domain))
             table.setItem(row, 1, QTableWidgetItem(username))
             try:
@@ -954,6 +954,7 @@ class GUI(QMainWindow):
                 readable_time = str(time_added)
             table.setItem(row, 2, QTableWidgetItem(readable_time))
             table.setItem(row, 3, QTableWidgetItem(source if source else ""))
+            table.setItem(row, 4, QTableWidgetItem("Yes" if int(is_blocked) else "No"))
 
         def search_domain():
             dname = search_input.text().strip()
@@ -1097,6 +1098,7 @@ class GUI(QMainWindow):
 
         try:
             blocked_domains = self.client.get_blocked_domains()
+            print(blocked_domains)
             table.setRowCount(len(blocked_domains))
             for row, (domain, time_added, currently_blocked) in enumerate(blocked_domains):
                 try:
@@ -1107,7 +1109,7 @@ class GUI(QMainWindow):
 
                 table.setItem(row, 0, QTableWidgetItem(domain))
                 table.setItem(row, 1, QTableWidgetItem(readable_time))
-                table.setItem(row, 2, QTableWidgetItem("Yes" if currently_blocked else "No"))
+                table.setItem(row, 2, QTableWidgetItem("Yes" if int(currently_blocked) else "No"))
         except Exception as e:
             logger.error(f"Failed to retrieve blocked domains: {e}")
             error_label = QLabel("Failed to load blocked domains.")

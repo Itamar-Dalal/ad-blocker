@@ -193,14 +193,17 @@ class DomainsDBHandler:
                 """CREATE TABLE IF NOT EXISTS domains (
                                     domain TEXT UNIQUE NOT NULL PRIMARY KEY,
                                     username TEXT NOT NULL,
-                                    time FLOAT NOT NULL
+                                    time FLOAT NOT NULL,
+                                    source TEXT,
+                                    is_blocked INTEGER NOT NULL DEFAULT 1
                 )"""
             )
-
             cursor.execute("PRAGMA table_info(domains)")
             columns = [info[1] for info in cursor.fetchall()]
             if 'source' not in columns:
                 cursor.execute("ALTER TABLE domains ADD COLUMN source TEXT")
+            if 'is_blocked' not in columns:
+                cursor.execute("ALTER TABLE domains ADD COLUMN is_blocked INTEGER NOT NULL DEFAULT 1")
             conn.commit()
 
     def get_connection(self):
@@ -210,7 +213,7 @@ class DomainsDBHandler:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT OR REPLACE INTO domains (domain, username, time, source) VALUES (?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO domains (domain, username, time, source, is_blocked) VALUES (?, ?, ?, ?, 1)",
                 (domain, username, time(), source),
             )
             conn.commit()
@@ -218,19 +221,20 @@ class DomainsDBHandler:
     def remove_domain(self, domain) -> None:
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("DELETE FROM domains WHERE domain=?", (domain,))
+            cursor.execute("UPDATE domains SET is_blocked=0 WHERE domain=?", (domain,))
             conn.commit()
 
     def is_domain_exist(self, domain) -> bool:
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM domains WHERE domain=?", (domain,))
+            cursor.execute("SELECT * FROM domains WHERE domain=? AND is_blocked=1", (domain,))
             return cursor.fetchone() is not None
 
     def get_domains(self) -> set:
+        # Only return currently blocked domains
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT domain FROM domains")
+            cursor.execute("SELECT domain FROM domains WHERE is_blocked=1")
             return set([row[0] for row in cursor.fetchall()])
 
     @staticmethod
@@ -301,12 +305,18 @@ class DomainsDBHandler:
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT domain, time, 1 FROM domains WHERE username=?",
+                "SELECT domain, time, is_blocked FROM domains WHERE username=?",
                 (username,)
             )
             domains = cursor.fetchall()
             logger.info(f"Fetched blocked domains for user '{username}': {domains}")
             return domains
+
+    def get_all_domains(self):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT domain, username, time, source, is_blocked FROM domains")
+            return cursor.fetchall()
 
 if __name__ == "__main__":
     #domain_db = DomainsDBHandler()
