@@ -24,6 +24,7 @@ class DNSHandler:
     NXDOMAIN = 3  # No such domain
     SERVFAIL = 2  # Server failure
     RESOLVER_TEST_INTERVAL = 300  # Retest resolvers every 5 minutes
+    CACHE_TTL = 60  # seconds
 
     def __init__(self, listen_ip: str = "0.0.0.0", listen_port: int = DNS_PORT) -> None:
         self.listen_ip = listen_ip
@@ -32,6 +33,7 @@ class DNSHandler:
         self.udp_handler = UDPHandler()
         self.sockets = []
         self.active_resolvers = []
+        self.cache = {}  # (domain, qtype, qclass): (DNSRecord, expire_time)
         for server in DNSHandler.DNS_RESOLVER_SERVERS:
             try:
                 sock = socket(AF_INET, SOCK_DGRAM)
@@ -83,19 +85,19 @@ class DNSHandler:
         return f"DNSHandler(listen_ip={self.listen_ip}, listen_port={self.listen_port})"
 
     def get_cache_key(self, request: DNSRecord) -> tuple:
-        """Generate a key for logging purposes (no caching)."""
+        """Generate a key for caching and logging."""
         domain_name = str(request.q.qname)[:-1]
         return (domain_name, request.q.qtype, request.q.qclass)
 
     def handle_dns_request(self, data: bytes) -> bytes:
-        """Handles incoming DNS requests without caching."""
+        """Handles incoming DNS requests with caching."""
         try:
             request = DNSRecord.parse(data)
         except Exception as e:
             logger.error(f"Failed to parse DNS request: {e}")
             return b''
         
-        key = self.get_cache_key(request)  # Used for logging only
+        key = self.get_cache_key(request)
         domain_name = key[0]
 
         # Periodically retest resolvers
@@ -104,6 +106,18 @@ class DNSHandler:
             self.test_resolvers()
             self.last_resolver_test = time.time()
 
+        # Check cache (only for non-blocked domains)
+        if not self.is_blocked_domain(domain_name):
+            cached = self.cache.get(key)
+            if cached:
+                record, expire_time = cached
+                if time.time() < expire_time:
+                    logger.info(f"Cache hit for {key}")
+                    return record.pack()
+                else:
+                    logger.info(f"Cache expired for {key}")
+                    del self.cache[key]
+
         if self.is_blocked_domain(domain_name):
             logger.info(f"Domain {domain_name} is blocked")
             return self.create_blocked_response(request)
@@ -111,6 +125,8 @@ class DNSHandler:
             logger.info(f"Domain {domain_name} is not blocked, forwarding request")
             dns_response = self.forward_request(data)
             if dns_response:
+                # Cache the response
+                self.cache[key] = (dns_response, time.time() + self.CACHE_TTL)
                 return dns_response.pack()
             else:
                 logger.warning(f"No response from any DNS resolver for {domain_name}")
