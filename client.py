@@ -135,7 +135,7 @@ class Client:
         def func(self, domain: str):
             # Validate domain
             if not Settings.MIN_DOMAIN_LENGTH.value <= len(domain) <= Settings.MAX_DOMAIN_LENGTH.value:
-                self.window.unblock_domain_window(f"Domain Should be between {Settings.MIN_DOMAIN_LENGTH} and {Settings.MAX_DOMAIN_LENGTH} characters")
+                self.window.unblock_domain_window(f"Domain Should be between {Settings.MIN_DOMAIN_LENGTH.value} and {Settings.MAX_DOMAIN_LENGTH.value} characters")
                 return
             
             domain_regex = r"^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})+$"
@@ -304,8 +304,7 @@ class Client:
             case ProtocolOpcodes.ACKNOWLEDGMENT.value:
                 self.logged_in = True
                 self.window.change_logged_in_status(self.logged_in)
-                self.window.home_window()
-                # TODO: add pop up window
+                self.window.show_success_popup("Login successful!", self.window.home_window)
                 return
 
             case ProtocolOpcodes.ERROR.value:
@@ -335,14 +334,16 @@ class Client:
             case ProtocolOpcodes.ACKNOWLEDGMENT.value:
                 self.logged_in = False
                 self.window.change_logged_in_status(self.logged_in)
-                self.window.home_window()
-                # TODO: add pop up window
+                self.window.show_success_popup("Logout successful!", self.window.home_window)
                 return
 
             case ProtocolOpcodes.ERROR.value:
                 error_code = self.handle_error(response)
                 match error_code:
-                    # TODO: add error codes
+                    case ErrorCodes.NOT_LOGGED_IN.value:
+                        self.window.show_error_popup("You are not logged in.", self.window.home_window)
+                    case ErrorCodes.SERVER_ERROR.value:
+                        self.window.show_error_popup("Server error occurred during logout.", self.window.home_window)
                     case _:
                         self.invalid_response(response)
 
@@ -357,8 +358,7 @@ class Client:
         match opcode:
             case ProtocolOpcodes.ACKNOWLEDGMENT.value:
                 logger.info(f"Domain '{domain}' successfully added")
-                self.window.home_window()
-                # TODO: Add success popup
+                self.window.show_success_popup(f"Domain '{domain}' successfully blocked!", self.window.home_window)
                 return
             case ProtocolOpcodes.ERROR.value:
                 error_code = self.handle_error(response)
@@ -368,7 +368,7 @@ class Client:
                     case ErrorCodes.NOT_LOGGED_IN.value:
                         self.window.block_domain_window("You must be logged in to add a domain.")
                     case ErrorCodes.INVALID_DOMAIN.value:
-                        self.window.block_domain_window("Invalid domain format.")
+                        self.window.block_domain_window("Invalid domain.")
                     case _:
                         self.invalid_response(response)
             case _:
@@ -382,8 +382,7 @@ class Client:
         match opcode:
             case ProtocolOpcodes.ACKNOWLEDGMENT.value:
                 logger.info(f"Domain '{domain}' successfully removed")
-                self.window.home_window()
-                # TODO: Add success popup
+                self.window.show_success_popup(f"Domain '{domain}' successfully unblocked!", self.window.home_window)
                 return
             case ProtocolOpcodes.ERROR.value:
                 error_code = self.handle_error(response)
@@ -406,7 +405,7 @@ class Client:
         opcode = response[0]
         match opcode:
             case ProtocolOpcodes.EMAIL_VERIFICATION_CODE_SENT.value:
-                self.window.email_verification_window()
+                self.window.show_success_popup("Account created! Please verify your email.", self.window.email_verification_window)
                 return
 
             case ProtocolOpcodes.ERROR.value:
@@ -435,8 +434,7 @@ class Client:
         opcode = response[0]
         match opcode:
             case ProtocolOpcodes.VERIFICATION_CODE_CORRECT.value:
-                self.window.home_window()
-                # TODO: add pop up window
+                self.window.show_success_popup("Email verified successfully!", self.window.home_window)
                 return
             
             case ProtocolOpcodes.VERIFICATION_CODE_INCORRECT.value:
@@ -465,7 +463,7 @@ class Client:
         opcode = response[0]
         match opcode:
             case ProtocolOpcodes.FORGOT_PASSWORD_CODE_SENT.value:
-                self.window.forgot_password_code_window()
+                self.window.show_success_popup("Verification code sent to your email.", self.window.forgot_password_code_window)
                 return
             
             case ProtocolOpcodes.ERROR.value:
@@ -488,7 +486,7 @@ class Client:
         opcode = response[0]
         match opcode:
             case ProtocolOpcodes.FORGOT_PASSWORD_CODE_CORRECT.value:
-                self.window.reset_password_window()
+                self.window.show_success_popup("Verification code correct. Please enter a new password.", self.window.reset_password_window)
                 return
             
             case ProtocolOpcodes.FORGOT_PASSWORD_CODE_INCORRECT.value:
@@ -517,8 +515,7 @@ class Client:
         opcode = response[0]
         match opcode:
             case ProtocolOpcodes.ACKNOWLEDGMENT.value:
-                self.window.login_window()
-                # TODO: add pop up window
+                self.window.show_success_popup("Password reset successfully!", self.window.login_window)
                 return
             
             case ProtocolOpcodes.ERROR.value:

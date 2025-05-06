@@ -1,7 +1,7 @@
 __author__ = "Itamar Dalal"
 
 import logging
-from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit, QGridLayout, QHBoxLayout, QCheckBox, QToolButton, QComboBox, QTableWidget, QTableWidgetItem, QAbstractItemView, QHeaderView
+from PyQt6.QtWidgets import QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget, QLineEdit, QGridLayout, QHBoxLayout, QCheckBox, QToolButton, QComboBox, QTableWidget, QTableWidgetItem, QAbstractItemView, QHeaderView, QMessageBox
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QGraphicsDropShadowEffect, QApplication
 from PyQt6.QtGui import QColor, QIcon, QPixmap
@@ -10,7 +10,6 @@ from registry import RegistryHandler
 from typing import Any
 from dns_config import DNSConfig
 from datetime import datetime
-from database import UsersDBHandler, DomainsDBHandler
 from settings import Settings
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -1187,6 +1186,26 @@ class GUI(QMainWindow):
                 logger.info("Password visibility toggled OFF")
         except Exception as e:
             logger.error(f"Failed to toggle password visibility: {e}")
+
+    def show_success_popup(self, message: str, on_close=None):
+        msg_box = QMessageBox(self)
+        msg_box.setIcon(QMessageBox.Icon.Information)
+        msg_box.setWindowTitle("Success")
+        msg_box.setText(message)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        if on_close:
+            msg_box.buttonClicked.connect(on_close)
+        msg_box.exec()
+
+    def show_error_popup(self, message: str, on_close=None):
+        msg_box = QMessageBox(self)
+        msg_box.setIcon(QMessageBox.Icon.Critical)
+        msg_box.setWindowTitle("Error")
+        msg_box.setText(message)
+        msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        if on_close:
+            msg_box.buttonClicked.connect(on_close)
+        msg_box.exec()
 
 if __name__ == "__main__":
     pass
