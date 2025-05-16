@@ -1,7 +1,7 @@
 __author__ = "Itamar Dalal"
 
 from sys import argv
-from threading import Thread, Semaphore
+from threading import Thread, Semaphore, Lock
 import socket
 from socket import socket, AF_INET, SOCK_STREAM, error, gaierror, gethostbyname
 import ssl
@@ -44,6 +44,7 @@ class Server:
         self.domains_db_handler = DomainsDBHandler()
         self.logged_in_users = {}
         self.login_attempts = {}
+        self.register_lock = Lock()
 
     def __repr__(self) -> str:
         return f"Server({self.ip}, {self.port})"
@@ -105,60 +106,61 @@ class Server:
             self.close_client_connection(cli_sock, addr)
 
     def handle_register(self, cli_sock, addr, request: list) -> None:
-        username, password, email = request[1:]
-        if not Settings.MIN_USERNAME_LENGTH.value <= len(username) <= Settings.MAX_USERNAME_LENGTH.value:
-            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_USERNAME.value)
-            return
-        if not Settings.MIN_PASSWORD_LENGTH.value <= len(password) <= Settings.MAX_PASSWORD_LENGTH.value:
-            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD.value)
-            return
-        if not re.search(r"\d", password):
-            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD.value)
-            return
-
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            self.protocol.send_error(cli_sock, ErrorCodes.INVALID_EMAIL.value)
-            return
-        if self.db_handler.is_username_exist(username):
-            self.protocol.send_error(cli_sock, ErrorCodes.USERNAME_IN_USE.value)
-            return
-        if self.db_handler.is_email_exist(email):
-            self.protocol.send_error(cli_sock, ErrorCodes.EMAIL_IN_USE.value)
-            return
-
-        email_code = Server.send_verification_code(email, True)
-        self.email_code_db_handler.save_email(email)
-        self.protocol.send_email_code_sent(cli_sock)
-        response = self.protocol.recv_data(cli_sock)
-        opcode = response[0]
-        match opcode:
-            case ProtocolOpcodes.VERIFICATION_CODE.value:
-                client_code = response[1]
-                if len(client_code) != 6 or not client_code.isnumeric():
-                    self.protocol.send_error(cli_sock, ErrorCodes.INVALID_CODE.value)
-                    return
-
-                if self.email_code_db_handler.is_timeout_passed(email):
-                    self.email_code_db_handler.delete_email(email)
-                    self.protocol.send_error(cli_sock, ErrorCodes.CODE_EXPIRED.value)
-                    return
-
-                is_code_correct = (client_code == email_code)
-                self.protocol.send_verification_code_status(cli_sock, is_code_correct)
-                if not is_code_correct:
-                    return
-
-            case ProtocolOpcodes.CREATE_USER.value:
-                self.handle_register(cli_sock, addr, response)
+        with self.register_lock:
+            username, password, email = request[1:]
+            if not Settings.MIN_USERNAME_LENGTH.value <= len(username) <= Settings.MAX_USERNAME_LENGTH.value:
+                self.protocol.send_error(cli_sock, ErrorCodes.INVALID_USERNAME.value)
+                return
+            if not Settings.MIN_PASSWORD_LENGTH.value <= len(password) <= Settings.MAX_PASSWORD_LENGTH.value:
+                self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD.value)
+                return
+            if not re.search(r"\d", password):
+                self.protocol.send_error(cli_sock, ErrorCodes.INVALID_PASSWORD.value)
                 return
 
-            case _:
-                self.invalid_request(cli_sock, addr, response)
+            if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                self.protocol.send_error(cli_sock, ErrorCodes.INVALID_EMAIL.value)
+                return
+            if self.db_handler.is_username_exist(username):
+                self.protocol.send_error(cli_sock, ErrorCodes.USERNAME_IN_USE.value)
+                return
+            if self.db_handler.is_email_exist(email):
+                self.protocol.send_error(cli_sock, ErrorCodes.EMAIL_IN_USE.value)
                 return
 
-        self.db_handler.save_user(username, email, password)
-        self.email_code_db_handler.delete_email(email)
-        logger.info(f"User registered successfully: {username}, {email}")
+            email_code = Server.send_verification_code(email, True)
+            self.email_code_db_handler.save_email(email)
+            self.protocol.send_email_code_sent(cli_sock)
+            response = self.protocol.recv_data(cli_sock)
+            opcode = response[0]
+            match opcode:
+                case ProtocolOpcodes.VERIFICATION_CODE.value:
+                    client_code = response[1]
+                    if len(client_code) != 6 or not client_code.isnumeric():
+                        self.protocol.send_error(cli_sock, ErrorCodes.INVALID_CODE.value)
+                        return
+
+                    if self.email_code_db_handler.is_timeout_passed(email):
+                        self.email_code_db_handler.delete_email(email)
+                        self.protocol.send_error(cli_sock, ErrorCodes.CODE_EXPIRED.value)
+                        return
+
+                    is_code_correct = (client_code == email_code)
+                    self.protocol.send_verification_code_status(cli_sock, is_code_correct)
+                    if not is_code_correct:
+                        return
+
+                case ProtocolOpcodes.CREATE_USER.value:
+                    self.handle_register(cli_sock, addr, response)
+                    return
+
+                case _:
+                    self.invalid_request(cli_sock, addr, response)
+                    return
+
+            self.db_handler.save_user(username, email, password)
+            self.email_code_db_handler.delete_email(email)
+            logger.info(f"User registered successfully: {username}, {email}")
 
     def send_verification_code(receiver_email: str, to_verify_email: bool) -> str:
         try:

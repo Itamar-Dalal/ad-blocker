@@ -406,7 +406,7 @@ class Client:
         opcode = response[0]
         match opcode:
             case ProtocolOpcodes.EMAIL_VERIFICATION_CODE_SENT.value:
-                self.window.show_success_popup("Account created! Please verify your email.", self.window.email_verification_window)
+                self.window.show_success_popup("Please verify your email.", self.window.email_verification_window)
                 return
 
             case ProtocolOpcodes.ERROR.value:

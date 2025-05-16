@@ -639,7 +639,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Create Account Window")
 
     def email_verification_window(self, error_msg=None):
-        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT if error_msg else Styles.WINDOW_HEIGHT - 30)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
