@@ -22,3 +22,6 @@ class Settings(Enum):
     DATABASE_PATH = b"adblocker.db"
 
     ADMIN_USERNAME: str = "system"
+
+    CHUNK_SIZE = 1000
+    LOADING_DELAY = 0.1

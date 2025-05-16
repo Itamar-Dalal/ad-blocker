@@ -11,8 +11,8 @@ from typing import Any
 from dns_config import DNSConfig
 from datetime import datetime
 from settings import Settings
-from threading import Thread
-from time import sleep
+from PyQt6.QtCore import QTimer
+from PyQt6.QtWidgets import QTableWidgetItem
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -21,8 +21,6 @@ class GUI(QMainWindow):
     LIGHT_THEME = RegistryHandler.LIGHT_THEME
     DARK_THEME = RegistryHandler.DARK_THEME
     DEFAULT_THEME = 2
-    CHUNK_SIZE = 500  # Increased from 100 to 500
-    CHUNK_DELAY = 0.1  # Delay between chunks in seconds
 
     def __init__(self, c: Any) -> None:
         super().__init__()
@@ -837,33 +835,47 @@ class GUI(QMainWindow):
         central_widget.setLayout(layout)
         logger.info("Navigated to Admin Panel Window")
 
-    def load_domains_in_chunks(self, table, domains, search_button=None):
-        """Load domains into the table in chunks to prevent UI freezing"""
+    def load_domains_in_chunks(self, table, domains, search_button=None, return_button=None, is_history_window=False):
+        """Load domains into the table in chunks using QTimer to avoid UI freezing."""
         if search_button:
             search_button.setEnabled(False)
             search_button.setText("Loading...")
-            search_button.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)  # Apply disabled style
+            search_button.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)
+        if return_button:
+            return_button.setEnabled(False)
+            return_button.setText("Loading...")
+            return_button.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)
+
+        chunk_size = Settings.CHUNK_SIZE.value
+        delay_ms = int(Settings.LOADING_DELAY.value * 1000)  # QTimer uses milliseconds
+        index = {'i': 0}  # Use mutable container to keep track inside nested function
 
         def load_chunk():
-            for i in range(0, len(domains), self.CHUNK_SIZE):
-                chunk = domains[i:i + self.CHUNK_SIZE]
-                current_row = table.rowCount()
-                table.setRowCount(current_row + len(chunk))
-                
-                for row, domain_data in enumerate(chunk, start=current_row):
-                    for col, data in enumerate(domain_data):
-                        table.setItem(row, col, QTableWidgetItem(str(data)))
-                sleep(self.CHUNK_DELAY)
-                
-            if search_button:
-                search_button.setEnabled(True)
-                search_button.setText("Search")
-                search_button.setStyleSheet(Styles.BUTTON_STYLE)  # Restore normal style
+            i = index['i']
+            if i >= len(domains):
+                if search_button:
+                    search_button.setEnabled(True)
+                    search_button.setText("Search")
+                    search_button.setStyleSheet(Styles.BUTTON_STYLE)
+                if return_button:
+                    return_button.setEnabled(True)
+                    return_button.setText("Return To Admin Panel" if not is_history_window else "Return Home")
+                    return_button.setStyleSheet(Styles.BUTTON_STYLE)
+                return
 
-        # Start loading in background thread
-        loading_thread = Thread(target=load_chunk)
-        loading_thread.daemon = True
-        loading_thread.start()
+            chunk = domains[i:i + chunk_size]
+            current_row = table.rowCount()
+            table.setRowCount(current_row + len(chunk))
+
+            for row, domain_data in enumerate(chunk, start=current_row):
+                for col, data in enumerate(domain_data):
+                    table.setItem(row, col, QTableWidgetItem(str(data)))
+
+            index['i'] += chunk_size
+            QTimer.singleShot(delay_ms, load_chunk)
+
+        load_chunk()
+
 
     def search_domain_in_table(self, table, domain_to_search: str, column: int = 0) -> None:
         """Search for a domain in the specified table and highlight it"""
@@ -909,16 +921,17 @@ class GUI(QMainWindow):
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
+        return_button = QPushButton("Return To Admin Panel")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(self.admin_panel_window)
+        
         domains = self.client.get_all_domains()
-        self.load_domains_in_chunks(table, domains, search_button)
+        self.load_domains_in_chunks(table, domains, search_button, return_button, False)
 
         search_button.clicked.connect(lambda: self.search_domain_in_table(table, search_input.text()))
 
         layout.addWidget(table)
 
-        return_button = QPushButton("Return To Admin Panel")
-        return_button.setStyleSheet(Styles.BUTTON_STYLE)
-        return_button.clicked.connect(self.admin_panel_window)
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
@@ -1106,6 +1119,10 @@ class GUI(QMainWindow):
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
+        return_button = QPushButton("Return Home")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(self.home_window)
+
         try:
             blocked_domains = self.client.get_blocked_domains()
             formatted_domains = []
@@ -1117,7 +1134,7 @@ class GUI(QMainWindow):
                     readable_time = time_added
                 formatted_domains.append((domain, readable_time, "Yes" if int(currently_blocked) else "No"))
             
-            self.load_domains_in_chunks(table, formatted_domains, search_button)
+            self.load_domains_in_chunks(table, formatted_domains, search_button, return_button, True)
         except Exception as e:
             logger.error(f"Failed to retrieve blocked domains: {e}")
             error_label = QLabel("Failed to load blocked domains.")
@@ -1137,9 +1154,6 @@ class GUI(QMainWindow):
             layout.addWidget(error_label)
             logger.error(f"Error in history_window: {error_msg}")
 
-        return_button = QPushButton("Return Home")
-        return_button.setStyleSheet(Styles.BUTTON_STYLE)
-        return_button.clicked.connect(self.home_window)
         layout.addWidget(return_button)
 
         central_widget.setLayout(layout)
