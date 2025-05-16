@@ -11,6 +11,8 @@ from typing import Any
 from dns_config import DNSConfig
 from datetime import datetime
 from settings import Settings
+from threading import Thread
+from time import sleep
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -19,6 +21,8 @@ class GUI(QMainWindow):
     LIGHT_THEME = RegistryHandler.LIGHT_THEME
     DARK_THEME = RegistryHandler.DARK_THEME
     DEFAULT_THEME = 2
+    CHUNK_SIZE = 500  # Increased from 100 to 500
+    CHUNK_DELAY = 0.1  # Delay between chunks in seconds
 
     def __init__(self, c: Any) -> None:
         super().__init__()
@@ -833,83 +837,46 @@ class GUI(QMainWindow):
         central_widget.setLayout(layout)
         logger.info("Navigated to Admin Panel Window")
 
-    def show_users_table(self):
-        self.setFixedSize(Styles.WINDOW_WIDTH + 600, Styles.WINDOW_HEIGHT + 300)
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        layout = QVBoxLayout()
+    def load_domains_in_chunks(self, table, domains, search_button=None):
+        """Load domains into the table in chunks to prevent UI freezing"""
+        if search_button:
+            search_button.setEnabled(False)
+            search_button.setText("Loading...")
+            search_button.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)  # Apply disabled style
 
-        label = QLabel("Users Table")
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setStyleSheet(Styles.TITLE_STYLE)
-        layout.addWidget(label)
+        def load_chunk():
+            for i in range(0, len(domains), self.CHUNK_SIZE):
+                chunk = domains[i:i + self.CHUNK_SIZE]
+                current_row = table.rowCount()
+                table.setRowCount(current_row + len(chunk))
+                
+                for row, domain_data in enumerate(chunk, start=current_row):
+                    for col, data in enumerate(domain_data):
+                        table.setItem(row, col, QTableWidgetItem(str(data)))
+                sleep(self.CHUNK_DELAY)
+                
+            if search_button:
+                search_button.setEnabled(True)
+                search_button.setText("Search")
+                search_button.setStyleSheet(Styles.BUTTON_STYLE)  # Restore normal style
 
-        search_layout = QHBoxLayout()
-        search_label = QLabel("Search User:")
-        search_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
-        search_input = QLineEdit()
-        search_input.setPlaceholderText("Enter username")
-        search_input.setStyleSheet(Styles.INPUT_STYLE)
-        search_button = QPushButton("Search")
-        search_button.setStyleSheet(Styles.BUTTON_STYLE)
-        search_layout.addWidget(search_label)
-        search_layout.addWidget(search_input)
-        search_layout.addWidget(search_button)
-        layout.addLayout(search_layout)
+        # Start loading in background thread
+        loading_thread = Thread(target=load_chunk)
+        loading_thread.daemon = True
+        loading_thread.start()
 
-        table = QTableWidget()
-        table.setColumnCount(5)
-        table.setHorizontalHeaderLabels(["Username", "Email", "Password Hash", "Salt", "Delete"])
-        table.setStyleSheet(Styles.TABLE_STYLE)
-        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-
-        users = self.client.get_all_users()
-        table.setRowCount(len(users))
-        for row, (username, email, password, salt) in enumerate(users):
-            table.setItem(row, 1, QTableWidgetItem(email))
-            table.setItem(row, 2, QTableWidgetItem(password))
-            table.setItem(row, 3, QTableWidgetItem(str(salt)))
-            delete_btn = QPushButton()
-            delete_btn.setStyleSheet(Styles.DELETE_BUTTON_STYLE)
-            if username == Settings.ADMIN_USERNAME.value:
-                delete_btn.setEnabled(False)
-                delete_btn.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)
-                delete_btn.enterEvent = lambda event: QApplication.setOverrideCursor(Qt.CursorShape.ForbiddenCursor)
-                delete_btn.leaveEvent = lambda event: QApplication.restoreOverrideCursor()
-                table.setItem(row, 0, QTableWidgetItem(f"{username} (admin)"))
-            else:
-                delete_btn.clicked.connect(lambda _, uname=username: self.delete_user_from_server(uname))
-                table.setItem(row, 0, QTableWidgetItem(username))
-            table.setCellWidget(row, 4, delete_btn)
-
-        def search_user():
-            uname = search_input.text().strip()
-            if not uname:
-                logger.warning("Search input is empty")
+    def search_domain_in_table(self, table, domain_to_search: str, column: int = 0) -> None:
+        """Search for a domain in the specified table and highlight it"""
+        if not domain_to_search:
+            logger.warning("Search input is empty")
+            return
+        for row in range(table.rowCount()):
+            if table.item(row, column) and table.item(row, column).text() == domain_to_search:
+                table.selectRow(row)
+                table.scrollToItem(table.item(row, column), QAbstractItemView.ScrollHint.PositionAtCenter)
+                logger.info(f"Domain '{domain_to_search}' found at row {row}")
                 return
-            for row in range(table.rowCount()):
-                if table.item(row, 0) and table.item(row, 0).text() == uname:
-                    table.selectRow(row)
-                    table.scrollToItem(table.item(row, 0), QAbstractItemView.ScrollHint.PositionAtCenter)
-                    logger.info(f"User '{uname}' found at row {row}")
-                    return
-            logger.warning(f"User '{uname}' not found in the table")
-
-        search_button.clicked.connect(search_user)
-        layout.addWidget(table)
-
-        return_button = QPushButton("Return To Admin Panel")
-        return_button.setStyleSheet(Styles.BUTTON_STYLE)
-        return_button.clicked.connect(self.admin_panel_window)
-        layout.addWidget(return_button)
-
-        central_widget.setLayout(layout)
-        logger.info("Navigated to Users Table in Admin Panel")
-
-    def delete_user_from_server(self, username):
-        self.client.delete_user(username)
-        self.show_users_table()
+        logger.warning(f"Domain '{domain_to_search}' not found in the table")
 
     def show_domains_table(self):
         self.setFixedSize(Styles.WINDOW_WIDTH + 600, Styles.WINDOW_HEIGHT + 300)
@@ -943,32 +910,10 @@ class GUI(QMainWindow):
         table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         domains = self.client.get_all_domains()
-        table.setRowCount(len(domains))
-        for row, (domain, username, time_added, source, is_blocked) in enumerate(domains):
-            table.setItem(row, 0, QTableWidgetItem(domain))
-            table.setItem(row, 1, QTableWidgetItem(username))
-            try:
-                readable_time = datetime.fromtimestamp(float(time_added)).strftime('%Y-%m-%d %H:%M:%S')
-            except Exception:
-                readable_time = str(time_added)
-            table.setItem(row, 2, QTableWidgetItem(readable_time))
-            table.setItem(row, 3, QTableWidgetItem(source if source else ""))
-            table.setItem(row, 4, QTableWidgetItem("Yes" if int(is_blocked) else "No"))
+        self.load_domains_in_chunks(table, domains, search_button)
 
-        def search_domain():
-            dname = search_input.text().strip()
-            if not dname:
-                logger.warning("Search input is empty")
-                return
-            for row in range(table.rowCount()):
-                if table.item(row, 0) and table.item(row, 0).text() == dname:
-                    table.selectRow(row)
-                    table.scrollToItem(table.item(row, 0), QAbstractItemView.ScrollHint.PositionAtCenter)
-                    logger.info(f"Domain '{dname}' found at row {row}")
-                    return
-            logger.warning(f"Domain '{dname}' not found in the table")
+        search_button.clicked.connect(lambda: self.search_domain_in_table(table, search_input.text()))
 
-        search_button.clicked.connect(search_domain)
         layout.addWidget(table)
 
         return_button = QPushButton("Return To Admin Panel")
@@ -978,6 +923,72 @@ class GUI(QMainWindow):
 
         central_widget.setLayout(layout)
         logger.info("Navigated to Domains Table in Admin Panel")
+
+    def show_users_table(self):
+        self.setFixedSize(Styles.WINDOW_WIDTH + 600, Styles.WINDOW_HEIGHT + 300)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QVBoxLayout()
+
+        label = QLabel("Users Table")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet(Styles.TITLE_STYLE)
+        layout.addWidget(label)
+
+        search_layout = QHBoxLayout()
+        search_label = QLabel("Search User:")
+        search_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
+        search_input = QLineEdit()
+        search_input.setPlaceholderText("Enter username")
+        search_input.setStyleSheet(Styles.INPUT_STYLE)
+        search_button = QPushButton("Search")
+        search_button.setStyleSheet(Styles.BUTTON_STYLE)
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(search_input)
+        search_layout.addWidget(search_button)
+        layout.addLayout(search_layout)
+
+        table = QTableWidget()
+        table.setColumnCount(5)
+        table.setHorizontalHeaderLabels(["Username", "Email", "Password Hash", "Salt", "Delete"])
+        table.setStyleSheet(Styles.TABLE_STYLE)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        users = self.client.get_all_users()
+        
+        def format_user_data(users):
+            formatted_data = []
+            for username, email, password, salt in users:
+                delete_btn = QPushButton()
+                delete_btn.setStyleSheet(Styles.DELETE_BUTTON_STYLE)
+                if username == Settings.ADMIN_USERNAME.value:
+                    delete_btn.setEnabled(False)
+                    delete_btn.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)
+                    delete_btn.enterEvent = lambda event: QApplication.setOverrideCursor(Qt.CursorShape.ForbiddenCursor)
+                    delete_btn.leaveEvent = lambda event: QApplication.restoreOverrideCursor()
+                    formatted_data.append((f"{username} (admin)", email, password, salt))
+                else:
+                    formatted_data.append((username, email, password, salt))
+            return formatted_data
+
+        self.load_domains_in_chunks(table, format_user_data(users), search_button)
+
+        search_button.clicked.connect(lambda: self.search_domain_in_table(table, search_input.text()))
+
+        layout.addWidget(table)
+
+        return_button = QPushButton("Return To Admin Panel")
+        return_button.setStyleSheet(Styles.BUTTON_STYLE)
+        return_button.clicked.connect(self.admin_panel_window)
+        layout.addWidget(return_button)
+
+        central_widget.setLayout(layout)
+        logger.info("Navigated to Users Table in Admin Panel")
+
+    def delete_user_from_server(self, username):
+        self.client.delete_user(username)
+        self.show_users_table()
 
     def settings_window(self):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
@@ -1097,18 +1108,16 @@ class GUI(QMainWindow):
 
         try:
             blocked_domains = self.client.get_blocked_domains()
-            print(blocked_domains)
-            table.setRowCount(len(blocked_domains))
-            for row, (domain, time_added, currently_blocked) in enumerate(blocked_domains):
+            formatted_domains = []
+            for domain, time_added, currently_blocked in blocked_domains:
                 try:
                     readable_time = datetime.fromtimestamp(float(time_added)).strftime('%Y-%m-%d %H:%M:%S')
                 except (ValueError, TypeError) as e:
                     logger.warning(f"Failed to convert time_added '{time_added}' to human-readable format: {e}")
-                    readable_time = time_added  # Fallback to original value
-
-                table.setItem(row, 0, QTableWidgetItem(domain))
-                table.setItem(row, 1, QTableWidgetItem(readable_time))
-                table.setItem(row, 2, QTableWidgetItem("Yes" if int(currently_blocked) else "No"))
+                    readable_time = time_added
+                formatted_domains.append((domain, readable_time, "Yes" if int(currently_blocked) else "No"))
+            
+            self.load_domains_in_chunks(table, formatted_domains, search_button)
         except Exception as e:
             logger.error(f"Failed to retrieve blocked domains: {e}")
             error_label = QLabel("Failed to load blocked domains.")
@@ -1116,20 +1125,7 @@ class GUI(QMainWindow):
             error_label.setStyleSheet(Styles.ERROR_STYLE)
             layout.addWidget(error_label)
 
-        def search_domain():
-            domain_to_search = search_input.text().strip()
-            if not domain_to_search:
-                logger.warning("Search input is empty")
-                return
-            for row in range(table.rowCount()):
-                if table.item(row, 0) and table.item(row, 0).text() == domain_to_search:
-                    table.selectRow(row)
-                    table.scrollToItem(table.item(row, 0), QAbstractItemView.ScrollHint.PositionAtCenter)
-                    logger.info(f"Domain '{domain_to_search}' found at row {row}")
-                    return
-            logger.warning(f"Domain '{domain_to_search}' not found in the table")
-
-        search_button.clicked.connect(search_domain)
+        search_button.clicked.connect(lambda: self.search_domain_in_table(table, search_input.text()))
 
         layout.addWidget(table)
 

@@ -17,6 +17,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 from ctypes import wintypes
 from dns_config import DNSConfig
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -582,8 +583,15 @@ class Client:
         opcode = response[0]
         if opcode == ProtocolOpcodes.ALL_DOMAINS_RESPONSE.value:
             # Each domain: domain,username,time,source,is_blocked
-            domains = [tuple(domain.split(",")) for domain in response[1:] if domain]
-            return domains
+            return [
+                (
+                    d, u,
+                    datetime.fromtimestamp(float(t)).strftime('%Y-%m-%d %H:%M:%S'),
+                    s, b
+                )
+                for entry in response[1:] if entry
+                for d, u, t, s, b in [entry.split(",")]
+            ]
         elif opcode == ProtocolOpcodes.ERROR.value:
             error_code = self.handle_error(response)
             match error_code:
