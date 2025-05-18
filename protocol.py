@@ -114,13 +114,13 @@ class Protocol:
     def send_forgot_password_code_sent(self, sock: socket) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE_SENT.value}", key=self.session_key)
     
+    def send_forgot_password_code_status(self, sock: socket, is_code_correct: bool) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.FORGOT_PASSWORD_CODE_CORRECT.value if is_code_correct else ProtocolOpcodes.FORGOT_PASSWORD_CODE_INCORRECT.value}", key=self.session_key)
+
     def send_blocked_domains_response(self, sock: socket, blocked_domains: list, key=None) -> None:
         domains_str = "|".join(blocked_domains)
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.BLOCKED_DOMAINS_RESPONSE.value}|{domains_str}", key=self.session_key)
-
-    def send_error(self, sock: socket, error_code: str) -> None:
-        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ERROR.value}|{error_code}", key=self.session_key)
-
+    
     def send_get_all_users(self, sock: socket) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.GET_ALL_USERS.value}", key=self.session_key)
 
@@ -132,6 +132,9 @@ class Protocol:
 
     def send_get_current_username(self, sock: socket) -> None:
         self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.GET_CURRENT_USERNAME.value}", key=self.session_key)
+
+    def send_error(self, sock: socket, error_code: str) -> None:
+        self.tcp_handler.send_with_size(sock, f"{ProtocolOpcodes.ERROR.value}|{error_code}", key=self.session_key)
 
     def recv_data(self, sock: socket) -> list:
         response = self.tcp_handler.recv_by_size(sock, key=self.session_key)

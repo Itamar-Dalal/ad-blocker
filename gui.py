@@ -412,6 +412,7 @@ class GUI(QMainWindow):
             layout.addWidget(error_label)
             logger.error(f"Error in forgot_password_code_window: {error_msg}")
 
+        
         submit_button = QPushButton("Submit")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
         submit_button.clicked.connect(lambda: self.client.forgot_password_code(code_input.text()))
@@ -969,23 +970,30 @@ class GUI(QMainWindow):
         table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         users = self.client.get_all_users()
-        
-        def format_user_data(users):
-            formatted_data = []
-            for username, email, password, salt in users:
-                delete_btn = QPushButton()
-                delete_btn.setStyleSheet(Styles.DELETE_BUTTON_STYLE)
-                if username == Settings.ADMIN_USERNAME.value:
-                    delete_btn.setEnabled(False)
-                    delete_btn.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)
-                    delete_btn.enterEvent = lambda event: QApplication.setOverrideCursor(Qt.CursorShape.ForbiddenCursor)
-                    delete_btn.leaveEvent = lambda event: QApplication.restoreOverrideCursor()
-                    formatted_data.append((f"{username} (admin)", email, password, salt))
-                else:
-                    formatted_data.append((username, email, password, salt))
-            return formatted_data
 
-        self.load_domains_in_chunks(table, format_user_data(users), search_button)
+        table.setRowCount(len(users))
+        for row, (username, email, password, salt) in enumerate(users):
+            # Username column
+            if username == Settings.ADMIN_USERNAME.value:
+                username_display = f"{username} (admin)"
+            else:
+                username_display = username
+            table.setItem(row, 0, QTableWidgetItem(username_display))
+            table.setItem(row, 1, QTableWidgetItem(email))
+            table.setItem(row, 2, QTableWidgetItem(password))
+            table.setItem(row, 3, QTableWidgetItem(salt))
+
+            delete_btn = QPushButton("")
+            if username == Settings.ADMIN_USERNAME.value:
+                delete_btn.setEnabled(False)
+                delete_btn.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)
+                delete_btn.enterEvent = lambda event: QApplication.setOverrideCursor(Qt.CursorShape.ForbiddenCursor)
+                delete_btn.leaveEvent = lambda event: QApplication.restoreOverrideCursor()
+            else:
+                delete_btn.setStyleSheet(Styles.DELETE_BUTTON_STYLE)
+                # Use lambda with default argument to capture username
+                delete_btn.clicked.connect(lambda _, uname=username: self.delete_user_from_server(uname))
+            table.setCellWidget(row, 4, delete_btn)
 
         search_button.clicked.connect(lambda: self.search_domain_in_table(table, search_input.text()))
 
@@ -1032,13 +1040,7 @@ class GUI(QMainWindow):
 
         change_password_button = QPushButton("Change Password")
         change_password_button.setStyleSheet(Styles.BUTTON_STYLE)
-        if not self.logged_in:
-            change_password_button.setEnabled(False)
-            change_password_button.setStyleSheet(Styles.DISABLED_BUTTON_STYLE)
-            change_password_button.enterEvent = lambda event: QApplication.setOverrideCursor(Qt.CursorShape.ForbiddenCursor)
-            change_password_button.leaveEvent = lambda event: QApplication.restoreOverrideCursor()
-        else:
-            change_password_button.clicked.connect(self.change_password_window)
+        change_password_button.clicked.connect(self.change_password_window)
         layout.addWidget(change_password_button)
 
         return_button = QPushButton("Return Home")

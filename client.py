@@ -81,6 +81,9 @@ class Client:
 
     def verify_login_args(call: Callable):
         def func(self, username: str, password: str):
+            if "|" in username or "|" in password:
+                self.window.login_window("Username and password cannot contain the '|' character.")
+                return
             # Validate username
             if (
                 len(username) < Settings.MIN_USERNAME_LENGTH.value
@@ -119,6 +122,9 @@ class Client:
 
     def verify_block_domain_args(call: Callable):
         def func(self, domain: str):
+            if "|" in domain:
+                self.window.block_domain_window("Domain cannot contain the '|' character.")
+                return
             # Validate domain
             if not Settings.MIN_DOMAIN_LENGTH.value <= len(domain) <= Settings.MAX_DOMAIN_LENGTH.value:
                 self.window.block_domain_window(f"Domain Should be between {Settings.MIN_DOMAIN_LENGTH.value} and {Settings.MAX_DOMAIN_LENGTH.value} characters")
@@ -134,6 +140,9 @@ class Client:
 
     def verify_unblock_domain_args(call: Callable):
         def func(self, domain: str):
+            if "|" in domain:
+                self.window.unblock_domain_window("Domain cannot contain the '|' character.")
+                return
             # Validate domain
             if not Settings.MIN_DOMAIN_LENGTH.value <= len(domain) <= Settings.MAX_DOMAIN_LENGTH.value:
                 self.window.unblock_domain_window(f"Domain Should be between {Settings.MIN_DOMAIN_LENGTH.value} and {Settings.MAX_DOMAIN_LENGTH.value} characters")
@@ -150,6 +159,9 @@ class Client:
 
     def verify_create_account_args(call: Callable):
         def func(self, username: str, password: str, email: str):
+            if "|" in username or "|" in password or "|" in email:
+                self.window.create_account_window("Username, password, and email cannot contain the '|' character.")
+                return
             # Validate username
             if (
                 len(username) < Settings.MIN_USERNAME_LENGTH.value
@@ -194,6 +206,9 @@ class Client:
 
     def verify_verification_args(call: Callable):
         def func(self, code: str):
+            if "|" in code:
+                self.window.email_verification_window("Verification code cannot contain the '|' character.")
+                return
             if len(code) != 6:
                 self.window.email_verification_window(
                     f'Invalid verification code: "{code}". Verification code must be 6 numbers.'
@@ -205,6 +220,9 @@ class Client:
     
     def verify_forgot_password_args(call: Callable):
         def func(self, email: str):
+            if "|" in email:
+                self.window.forgot_password_window("Email cannot contain the '|' character.")
+                return
             if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
                 self.window.forgot_password_window(
                     f'Invalid email: "{email}". Email must be in format [???@???.???].'
@@ -216,6 +234,9 @@ class Client:
     
     def verify_reset_password_args(call: Callable):
         def func(self, password: str):
+            if "|" in password:
+                self.window.reset_password_window("Password cannot contain the '|' character.")
+                return
             if (
                 len(password) < Settings.MIN_PASSWORD_LENGTH.value
                 or len(password) > Settings.MAX_PASSWORD_LENGTH.value
