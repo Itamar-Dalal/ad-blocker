@@ -309,7 +309,7 @@ class DomainsDBHandler:
                 (username,)
             )
             domains = cursor.fetchall()
-            logger.info(f"Fetched blocked domains for user '{username}': {domains}")
+            logger.info(f"Fetched blocked domains for user '{username}'.")
             return domains
 
     def get_all_domains(self):

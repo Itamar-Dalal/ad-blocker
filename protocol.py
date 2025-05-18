@@ -35,7 +35,7 @@ class ProtocolOpcodes(StrEnum):
     BLOCKED_DOMAINS_RESPONSE: str = "BDRS"
 
     GET_CURRENT_USERNAME: str = "GCUN"
-    CURRENT_USERNAME_RESPONSE: str = "CUSR"  # Changed from "CUSRSP" to "CUSR"
+    CURRENT_USERNAME_RESPONSE: str = "CUSR"
 
     ERROR: str = "ERRO"
 
@@ -61,7 +61,7 @@ class ErrorCodes(StrEnum):
     INVALID_CREDENTIALS: str = "19"
     NOT_ADMIN: str = "20"
     CANNOT_DELETE_ADMIN: str = "21"
-    TOO_MANY_ATTEMPTS: str = "22"  # Added for rate limiting
+    TOO_MANY_ATTEMPTS: str = "22"
 
 class Protocol:
     def __init__(self):

@@ -54,10 +54,12 @@ class Server:
 
     def handle_client(self, cli_sock, addr):
         session_key = None
+        logger.info(f"New client connected from {addr}")
         try:
             # --- AES session key exchange with RSA decryption ---
             # Receive the length of the encrypted key (4 bytes, big endian)
             enc_key_len = int.from_bytes(cli_sock.recv(4), "big")
+            logger.debug(f"Receiving encrypted session key of length {enc_key_len} from {addr}")
             encrypted_session_key = b""
             while len(encrypted_session_key) < enc_key_len:
                 chunk = cli_sock.recv(enc_key_len - len(encrypted_session_key))
@@ -69,11 +71,13 @@ class Server:
                 priv_key = RSA.import_key(f.read())
             cipher_rsa = PKCS1_OAEP.new(priv_key)
             session_key = cipher_rsa.decrypt(encrypted_session_key)
+            logger.info(f"Session key established with client {addr}")
             self.protocol.tcp_handler.session_key = session_key
             self.protocol.set_session_key(session_key)
             while True:
                 request = self.protocol.recv_data(cli_sock)
                 opcode = request[0]
+                logger.info(f"Received request from {addr}: {opcode} {request[1:]}")
                 match opcode:
                     case ProtocolOpcodes.CREATE_USER.value:
                         self.handle_register(cli_sock, addr, request)
@@ -98,6 +102,7 @@ class Server:
                     case ProtocolOpcodes.GET_CURRENT_USERNAME.value:
                         self.handle_get_current_username(cli_sock)
                     case _:
+                        logger.warning(f"Invalid opcode received from {addr}: {opcode}")
                         self.invalid_request(cli_sock, addr, request)
                         return
         except Exception as e:
@@ -106,6 +111,7 @@ class Server:
             self.close_client_connection(cli_sock, addr)
 
     def handle_register(self, cli_sock, addr, request: list) -> None:
+        logger.info(f"Handling registration from {addr}: {request[1:]}")
         with self.register_lock:
             username, password, email = request[1:]
             if not Settings.MIN_USERNAME_LENGTH.value <= len(username) <= Settings.MAX_USERNAME_LENGTH.value:
@@ -216,6 +222,7 @@ class Server:
             return None
 
     def handle_forgot_password(self, cli_sock, addr, request: list) -> None:
+        logger.info(f"Handling forgot password from {addr}: {request[1:]}")
         email = request[1]
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             self.protocol.send_error(cli_sock, ErrorCodes.INVALID_EMAIL.value)
@@ -274,6 +281,7 @@ class Server:
                 self.invalid_request(cli_sock, addr, response)
 
     def handle_login(self, cli_sock, addr, request: list) -> None:
+        logger.info(f"Handling login from {addr}: {request[1:]}")
         current_time = time()
         ip = addr[0]
         # Rate limiting logic
@@ -314,6 +322,7 @@ class Server:
         logger.info(f"User logged in successfully: {username} from {addr}")
 
     def handle_logout(self, cli_sock, addr) -> None:
+        logger.info(f"Handling logout from {addr}")
         if cli_sock in self.logged_in_users:
             logger.info(f"User logged out successfully: {self.logged_in_users[cli_sock]}")
             del self.logged_in_users[cli_sock]
@@ -322,6 +331,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.NOT_LOGGED_IN.value)
 
     def handle_add_domain(self, cli_sock, addr, request: list) -> None:
+        logger.info(f"Handling add domain from {addr}: {request[1:]}")
         if cli_sock not in self.logged_in_users:
             self.protocol.send_error(cli_sock, ErrorCodes.NOT_LOGGED_IN.value)
             return
@@ -338,6 +348,7 @@ class Server:
         logger.info(f"Domain '{domain}' added by user '{username}'")
 
     def handle_remove_domain(self, cli_sock, addr, request: list) -> None:
+        logger.info(f"Handling remove domain from {addr}: {request[1:]}")
         if cli_sock not in self.logged_in_users:
             self.protocol.send_error(cli_sock, ErrorCodes.NOT_LOGGED_IN.value)
             return
@@ -354,6 +365,7 @@ class Server:
         logger.info(f"Domain '{domain}' removed by user '{username}'")
 
     def handle_get_blocked_domains(self, cli_sock) -> None:
+        logger.info(f"Handling get blocked domains")
         if cli_sock not in self.logged_in_users:
             self.protocol.send_error(cli_sock, ErrorCodes.NOT_LOGGED_IN.value)
             return
@@ -364,6 +376,7 @@ class Server:
         self.protocol.send_blocked_domains_response(cli_sock, blocked_domains)
 
     def handle_get_all_users(self, cli_sock):
+        logger.info(f"Handling get all users")
         try:
             if cli_sock not in self.logged_in_users or self.logged_in_users[cli_sock] != Settings.ADMIN_USERNAME.value:
                 self.protocol.send_error(cli_sock, ErrorCodes.NOT_ADMIN.value)
@@ -387,6 +400,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def handle_get_all_domains(self, cli_sock):
+        logger.info(f"Handling get all domains")
         try:
             if cli_sock not in self.logged_in_users or self.logged_in_users[cli_sock] != Settings.ADMIN_USERNAME.value:
                 self.protocol.send_error(cli_sock, ErrorCodes.NOT_ADMIN.value)
@@ -407,6 +421,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def handle_delete_user(self, cli_sock, request):
+        logger.info(f"Handling delete user: {request[1:] if len(request) > 1 else ''}")
         try:
             if cli_sock not in self.logged_in_users or self.logged_in_users[cli_sock] != Settings.ADMIN_USERNAME.value:
                 self.protocol.send_error(cli_sock, ErrorCodes.NOT_ADMIN.value)
@@ -438,6 +453,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def handle_get_current_username(self, cli_sock):
+        logger.info(f"Handling get current username")
         username = f"{self.logged_in_users.get(cli_sock, 'guest')}{' (admin)' if cli_sock in self.logged_in_users and self.logged_in_users[cli_sock] == Settings.ADMIN_USERNAME.value else ''}"
         self.protocol.tcp_handler.send_with_size(
             cli_sock,
@@ -457,6 +473,7 @@ class Server:
         self.semaphore.release()
 
     def run(self):
+        logger.info("Starting server main loop")
         try:
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             context.load_cert_chain(certfile="server.crt", keyfile="server.key")
