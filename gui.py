@@ -411,7 +411,6 @@ class GUI(QMainWindow):
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
             logger.error(f"Error in forgot_password_code_window: {error_msg}")
-
         
         submit_button = QPushButton("Submit")
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
@@ -1206,7 +1205,7 @@ class GUI(QMainWindow):
         msg_box.setText(message)
         msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
         if on_close:
-            msg_box.buttonClicked.connect(on_close)
+            msg_box.buttonClicked.connect(lambda button: on_close())
         msg_box.exec()
 
     def show_error_popup(self, message: str, on_close=None):
