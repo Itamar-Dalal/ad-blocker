@@ -95,7 +95,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Welcome Window")
 
     def connect_to_server_window(self, error_msg=None):
-        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 50)
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 120 if error_msg else Styles.WINDOW_HEIGHT + 90)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -133,7 +133,6 @@ class GUI(QMainWindow):
         layout.addLayout(input_layout)
 
         if error_msg:
-            self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 63)
             error_label = QLabel(error_msg)
             error_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
             error_label.setStyleSheet(Styles.ERROR_STYLE)
@@ -145,6 +144,13 @@ class GUI(QMainWindow):
         submit_button.setStyleSheet(Styles.BUTTON_STYLE)
         submit_button.clicked.connect(lambda: self.client.connect_to_server(ip_input.text(), port_input.text()))
         layout.addWidget(submit_button)
+
+        # --- Add Find Server in LAN Button ---
+        find_server_button = QPushButton("Find Server in LAN")
+        find_server_button.setStyleSheet(Styles.BUTTON_STYLE)
+        find_server_button.clicked.connect(lambda: self.client.find_server_in_lan())
+        layout.addWidget(find_server_button)
+        # --------------------------------------
 
         return_button = QPushButton("Return To Welcome Window")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)

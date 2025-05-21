@@ -2,7 +2,7 @@ __author__ = "Itamar Dalal"
 
 from PyQt6.QtWidgets import QApplication
 import gui
-from socket import socket, AF_INET, SOCK_STREAM
+from socket import socket, AF_INET, SOCK_STREAM, SOCK_DGRAM, SO_BROADCAST, SOL_SOCKET
 from typing import Callable
 import re
 from protocol import Protocol, ProtocolOpcodes, ErrorCodes
@@ -319,237 +319,287 @@ class Client:
 
     @verify_login_args
     def login(self, username: str, password: str) -> None:
-        self.protocol.send_login(self.server, username, password)
-        response = self.protocol.recv_data(self.server)
-        opcode = response[0]
-        match opcode:
-            case ProtocolOpcodes.ACKNOWLEDGMENT.value:
-                self.logged_in = True
-                self.window.change_logged_in_status(self.logged_in)
-                self.window.show_success_popup("Login successful!", self.window.home_window)
-                return
+        try:
+            self.protocol.send_login(self.server, username, password)
+            response = self.protocol.recv_data(self.server)
+            opcode = response[0]
+            match opcode:
+                case ProtocolOpcodes.ACKNOWLEDGMENT.value:
+                    self.logged_in = True
+                    self.window.change_logged_in_status(self.logged_in)
+                    self.window.show_success_popup("Login successful!", self.window.home_window)
+                    return
 
-            case ProtocolOpcodes.ERROR.value:
-                error_code = self.handle_error(response)
-                match error_code:
-                    case ErrorCodes.INVALID_USERNAME.value:
-                        self.window.login_window("Invalid username length.")
-                    case ErrorCodes.INVALID_PASSWORD.value:
-                        self.window.login_window("Invalid password. Must be 5-20 characters and contain at least one number.")
-                    case ErrorCodes.INVALID_CREDENTIALS.value:
-                        self.window.login_window("Invalid username or password.")
-                    case ErrorCodes.TOO_MANY_ATTEMPTS.value:
-                        self.window.login_window("Too many failed attempts. Please try again later.")
-                    case ErrorCodes.SERVER_ERROR.value:
-                        self.window.login_window("Server error.")
-                    case _:
-                        self.invalid_response(response)
+                case ProtocolOpcodes.ERROR.value:
+                    error_code = self.handle_error(response)
+                    match error_code:
+                        case ErrorCodes.INVALID_USERNAME.value:
+                            self.window.login_window("Invalid username length.")
+                        case ErrorCodes.INVALID_PASSWORD.value:
+                            self.window.login_window("Invalid password. Must be 5-20 characters and contain at least one number.")
+                        case ErrorCodes.INVALID_CREDENTIALS.value:
+                            self.window.login_window("Invalid username or password.")
+                        case ErrorCodes.TOO_MANY_ATTEMPTS.value:
+                            self.window.login_window("Too many failed attempts. Please try again later.")
+                        case ErrorCodes.SERVER_ERROR.value:
+                            self.window.login_window("Server error.")
+                        case _:
+                            self.invalid_response(response)
 
-            case _:
-                self.invalid_response(response)
+                case _:
+                    self.invalid_response(response)
+        except Exception as e:
+            logger.error(f"Exception in login: {e}")
+            self.window.login_window(f"Error: {e}")
 
     def logout(self) -> None:
-        self.protocol.send_logout(self.server)
-        response = self.protocol.recv_data(self.server)
-        opcode = response[0]
-        match opcode:
-            case ProtocolOpcodes.ACKNOWLEDGMENT.value:
-                self.logged_in = False
-                self.window.change_logged_in_status(self.logged_in)
-                self.window.show_success_popup("Logout successful!", self.window.home_window)
-                return
+        try:
+            self.protocol.send_logout(self.server)
+            response = self.protocol.recv_data(self.server)
+            opcode = response[0]
+            match opcode:
+                case ProtocolOpcodes.ACKNOWLEDGMENT.value:
+                    self.logged_in = False
+                    self.window.change_logged_in_status(self.logged_in)
+                    self.window.show_success_popup("Logout successful!", self.window.home_window)
+                    return
 
-            case ProtocolOpcodes.ERROR.value:
-                error_code = self.handle_error(response)
-                match error_code:
-                    case ErrorCodes.NOT_LOGGED_IN.value:
-                        self.window.show_error_popup("You are not logged in.", self.window.home_window)
-                    case ErrorCodes.SERVER_ERROR.value:
-                        self.window.show_error_popup("Server error occurred during logout.", self.window.home_window)
-                    case _:
-                        self.invalid_response(response)
+                case ProtocolOpcodes.ERROR.value:
+                    error_code = self.handle_error(response)
+                    match error_code:
+                        case ErrorCodes.NOT_LOGGED_IN.value:
+                            self.window.show_error_popup("You are not logged in.", self.window.home_window)
+                        case ErrorCodes.SERVER_ERROR.value:
+                            self.window.show_error_popup("Server error occurred during logout.", self.window.home_window)
+                        case _:
+                            self.invalid_response(response)
 
-            case _:
-                self.invalid_response(response)
+                case _:
+                    self.invalid_response(response)
+        except Exception as e:
+            logger.error(f"Exception in logout: {e}")
+            self.window.show_error_popup(f"Error: {e}", self.window.home_window)
 
     @verify_block_domain_args
     def block_domain(self, domain: str) -> None:
-        self.protocol.send_add_domain(self.server, domain)
-        response = self.protocol.recv_data(self.server)
-        opcode = response[0]
-        match opcode:
-            case ProtocolOpcodes.ACKNOWLEDGMENT.value:
-                logger.info(f"Domain '{domain}' successfully added")
-                self.window.show_success_popup(f"Domain '{domain}' successfully blocked!", self.window.home_window)
-                return
-            case ProtocolOpcodes.ERROR.value:
-                error_code = self.handle_error(response)
-                match error_code:
-                    case ErrorCodes.DOMAIN_IN_USE.value:
-                        self.window.block_domain_window(f"Domain '{domain}' already blocked.")
-                    case ErrorCodes.NOT_LOGGED_IN.value:
-                        self.window.block_domain_window("You must be logged in to add a domain.")
-                    case ErrorCodes.INVALID_DOMAIN.value:
-                        self.window.block_domain_window("Invalid domain.")
-                    case _:
-                        self.invalid_response(response)
-            case _:
-                self.invalid_response(response)
+        try:
+            self.protocol.send_add_domain(self.server, domain)
+            response = self.protocol.recv_data(self.server)
+            opcode = response[0]
+            match opcode:
+                case ProtocolOpcodes.ACKNOWLEDGMENT.value:
+                    logger.info(f"Domain '{domain}' successfully added")
+                    self.window.show_success_popup(f"Domain '{domain}' successfully blocked!", self.window.home_window)
+                    return
+                case ProtocolOpcodes.ERROR.value:
+                    error_code = self.handle_error(response)
+                    match error_code:
+                        case ErrorCodes.DOMAIN_IN_USE.value:
+                            self.window.block_domain_window(f"Domain '{domain}' already blocked.")
+                        case ErrorCodes.NOT_LOGGED_IN.value:
+                            self.window.block_domain_window("You must be logged in to add a domain.")
+                        case ErrorCodes.INVALID_DOMAIN.value:
+                            self.window.block_domain_window("Invalid domain.")
+                        case ErrorCodes.SERVER_ERROR.value:
+                            self.window.block_domain_window("Server error.")
+                        case _:
+                            self.invalid_response(response)
+                case _:
+                    self.invalid_response(response)
+        except Exception as e:
+            logger.error(f"Exception in block_domain: {e}")
+            self.window.block_domain_window(f"Error: {e}")
 
     @verify_unblock_domain_args
     def unblock_domain(self, domain: str) -> None:
-        self.protocol.send_remove_domain(self.server, domain)
-        response = self.protocol.recv_data(self.server)
-        opcode = response[0]
-        match opcode:
-            case ProtocolOpcodes.ACKNOWLEDGMENT.value:
-                logger.info(f"Domain '{domain}' successfully removed")
-                self.window.show_success_popup(f"Domain '{domain}' successfully unblocked!", self.window.home_window)
-                return
-            case ProtocolOpcodes.ERROR.value:
-                error_code = self.handle_error(response)
-                match error_code:
-                    case ErrorCodes.DOMAIN_NOT_EXIST.value:
-                        self.window.unblock_domain_window(f"Domain '{domain}' does not exist.")
-                    case ErrorCodes.NOT_LOGGED_IN.value:
-                        self.window.unblock_domain_window("You must be logged in to remove a domain.")
-                    case ErrorCodes.INVALID_DOMAIN.value:
-                        self.window.unblock_domain_window("Invalid domain format.")
-                    case _:
-                        self.invalid_response(response)
-            case _:
-                self.invalid_response(response)
+        try:
+            self.protocol.send_remove_domain(self.server, domain)
+            response = self.protocol.recv_data(self.server)
+            opcode = response[0]
+            match opcode:
+                case ProtocolOpcodes.ACKNOWLEDGMENT.value:
+                    logger.info(f"Domain '{domain}' successfully removed")
+                    self.window.show_success_popup(f"Domain '{domain}' successfully unblocked!", self.window.home_window)
+                    return
+                case ProtocolOpcodes.ERROR.value:
+                    error_code = self.handle_error(response)
+                    match error_code:
+                        case ErrorCodes.DOMAIN_NOT_EXIST.value:
+                            self.window.unblock_domain_window(f"Domain '{domain}' does not exist.")
+                        case ErrorCodes.NOT_LOGGED_IN.value:
+                            self.window.unblock_domain_window("You must be logged in to remove a domain.")
+                        case ErrorCodes.INVALID_DOMAIN.value:
+                            self.window.unblock_domain_window("Invalid domain format.")
+                        case ErrorCodes.SERVER_ERROR.value:
+                            self.window.unblock_domain_window("Server error.")
+                        case _:
+                            self.invalid_response(response)
+                case _:
+                    self.invalid_response(response)
+        except Exception as e:
+            logger.error(f"Exception in unblock_domain: {e}")
+            self.window.unblock_domain_window(f"Error: {e}")
 
     @verify_create_account_args
     def create_account(self, username: str, password: str, email: str) -> None:
-        self.protocol.send_create_user(self.server, username, password, email)
-        response = self.protocol.recv_data(self.server)
-        opcode = response[0]
-        match opcode:
-            case ProtocolOpcodes.EMAIL_VERIFICATION_CODE_SENT.value:
-                self.window.show_success_popup("Please verify your email.", self.window.email_verification_window)
-                return
+        try:
+            self.protocol.send_create_user(self.server, username, password, email)
+            response = self.protocol.recv_data(self.server)
+            opcode = response[0]
+            match opcode:
+                case ProtocolOpcodes.EMAIL_VERIFICATION_CODE_SENT.value:
+                    self.window.show_success_popup("Please verify your email.", self.window.email_verification_window)
+                    return
 
-            case ProtocolOpcodes.ERROR.value:
-                error_code = self.handle_error(response)
-                match error_code:
-                    case ErrorCodes.INVALID_USERNAME.value:
-                        self.window.create_account_window("Invalid username. Must be 3-20 characters.")
-                    case ErrorCodes.INVALID_PASSWORD.value:
-                        self.window.create_account_window("Invalid password. Must be 5-20 characters and contain at least one number.")
-                    case ErrorCodes.INVALID_EMAIL.value:
-                        self.window.create_account_window("Invalid email format.")
-                    case ErrorCodes.USERNAME_IN_USE.value:
-                        self.window.create_account_window("Username already in use.")
-                    case ErrorCodes.EMAIL_IN_USE.value:
-                        self.window.create_account_window("Email already in use.")
-                    case _:
-                        self.invalid_response(response)
+                case ProtocolOpcodes.ERROR.value:
+                    error_code = self.handle_error(response)
+                    match error_code:
+                        case ErrorCodes.INVALID_USERNAME.value:
+                            self.window.create_account_window("Invalid username. Must be 3-20 characters.")
+                        case ErrorCodes.INVALID_PASSWORD.value:
+                            self.window.create_account_window("Invalid password. Must be 5-20 characters and contain at least one number.")
+                        case ErrorCodes.INVALID_EMAIL.value:
+                            self.window.create_account_window("Invalid email format.")
+                        case ErrorCodes.USERNAME_IN_USE.value:
+                            self.window.create_account_window("Username already in use.")
+                        case ErrorCodes.EMAIL_IN_USE.value:
+                            self.window.create_account_window("Email already in use.")
+                        case ErrorCodes.SERVER_ERROR.value:
+                            self.window.create_account_window("Server error.")
+                        case _:
+                            self.invalid_response(response)
 
-            case _:
-                self.invalid_response(response)
+                case _:
+                    self.invalid_response(response)
+        except Exception as e:
+            logger.error(f"Exception in create_account: {e}")
+            self.window.create_account_window(f"Error: {e}")
 
     @verify_verification_args
     def verify_email(self, code: str) -> None:
-        self.protocol.send_verification_code(self.server, code)
-        response = self.protocol.recv_data(self.server)
-        opcode = response[0]
-        match opcode:
-            case ProtocolOpcodes.VERIFICATION_CODE_CORRECT.value:
-                self.window.show_success_popup("Email verified successfully!", self.window.home_window)
-                return
-            
-            case ProtocolOpcodes.VERIFICATION_CODE_INCORRECT.value:
-                self.window.email_verification_window(
-                    f'Verification code: "{code}" is incorrect. Please try again.'
-                )
-                return
+        try:
+            self.protocol.send_verification_code(self.server, code)
+            response = self.protocol.recv_data(self.server)
+            opcode = response[0]
+            match opcode:
+                case ProtocolOpcodes.VERIFICATION_CODE_CORRECT.value:
+                    self.window.show_success_popup("Email verified successfully!", self.window.home_window)
+                    return
+                
+                case ProtocolOpcodes.VERIFICATION_CODE_INCORRECT.value:
+                    self.window.email_verification_window(
+                        f'Verification code: "{code}" is incorrect. Please try again.'
+                    )
+                    return
 
-            case ProtocolOpcodes.ERROR.value:
-                error_code = self.handle_error(response)
-                match error_code:
-                    case ErrorCodes.INVALID_CODE.value:
-                        self.window.email_verification_window("Invalid code format.")
-                    case ErrorCodes.CODE_EXPIRED.value:
-                        self.window.email_verification_window("Verification code expired. Please request a new one.")
-                    case _:
-                        self.invalid_response(response)
+                case ProtocolOpcodes.ERROR.value:
+                    error_code = self.handle_error(response)
+                    match error_code:
+                        case ErrorCodes.INVALID_CODE.value:
+                            self.window.email_verification_window("Invalid code format.")
+                        case ErrorCodes.CODE_EXPIRED.value:
+                            self.window.email_verification_window("Verification code expired. Please request a new one.")
+                        case ErrorCodes.SERVER_ERROR.value:
+                            self.window.email_verification_window("Server error.")
+                        case _:
+                            self.invalid_response(response)
 
-            case _:
-                self.invalid_response(response)
+                case _:
+                    self.invalid_response(response)
+        except Exception as e:
+            logger.error(f"Exception in verify_email: {e}")
+            self.window.email_verification_window(f"Error: {e}")
 
     @verify_forgot_password_args
     def forgot_password(self, email: str) -> None:
-        self.protocol.send_forgot_password(self.server, email)
-        response = self.protocol.recv_data(self.server)
-        opcode = response[0]
-        match opcode:
-            case ProtocolOpcodes.FORGOT_PASSWORD_CODE_SENT.value:
-                self.window.show_success_popup("Verification code sent to your email.", self.window.forgot_password_code_window)
-                return
-            
-            case ProtocolOpcodes.ERROR.value:
-                error_code = self.handle_error(response)
-                match error_code:
-                    case ErrorCodes.INVALID_EMAIL.value:
-                        self.window.forgot_password_window("Invalid email format.")
-                    case ErrorCodes.EMAIL_NOT_EXIST.value:
-                        self.window.forgot_password_window("Email does not exist.")
-                    case _:
-                        self.invalid_response(response)
+        try:
+            self.protocol.send_forgot_password(self.server, email)
+            response = self.protocol.recv_data(self.server)
+            opcode = response[0]
+            match opcode:
+                case ProtocolOpcodes.FORGOT_PASSWORD_CODE_SENT.value:
+                    self.window.show_success_popup("Verification code sent to your email.", self.window.forgot_password_code_window)
+                    return
+                
+                case ProtocolOpcodes.ERROR.value:
+                    error_code = self.handle_error(response)
+                    match error_code:
+                        case ErrorCodes.INVALID_EMAIL.value:
+                            self.window.forgot_password_window("Invalid email format.")
+                        case ErrorCodes.EMAIL_NOT_EXIST.value:
+                            self.window.forgot_password_window("Email does not exist.")
+                        case ErrorCodes.SERVER_ERROR.value:
+                            self.window.forgot_password_window("Server error.")
+                        case _:
+                            self.invalid_response(response)
 
-            case _:
-                self.invalid_response(response)
+                case _:
+                    self.invalid_response(response)
+        except Exception as e:
+            logger.error(f"Exception in forgot_password: {e}")
+            self.window.forgot_password_window(f"Error: {e}")
     
     @verify_verification_args
     def forgot_password_code(self, code: str) -> None:
-        self.protocol.send_forgot_password_code(self.server, code)
-        response = self.protocol.recv_data(self.server)
-        opcode = response[0]
-        match opcode:
-            case ProtocolOpcodes.FORGOT_PASSWORD_CODE_CORRECT.value:
-                self.window.show_success_popup("Verification code correct. Please enter a new password.", self.window.reset_password_window)
-                return
-            
-            case ProtocolOpcodes.FORGOT_PASSWORD_CODE_INCORRECT.value:
-                self.window.forgot_password_code_window(
-                    f'Invalid verification code: "{code}". Please try again.'
-                )
-                return
-                        
-            case ProtocolOpcodes.ERROR.value:
-                error_code = self.handle_error(response)
-                match error_code:
-                    case ErrorCodes.INVALID_CODE.value:
-                        self.window.forgot_password_code_window("Invalid code format.")
-                    case ErrorCodes.CODE_EXPIRED.value:
-                        self.window.forgot_password_code_window("Verification code expired. Please request a new one.")
-                    case _:
-                        self.invalid_response(response)
+        try:
+            self.protocol.send_forgot_password_code(self.server, code)
+            response = self.protocol.recv_data(self.server)
+            opcode = response[0]
+            match opcode:
+                case ProtocolOpcodes.FORGOT_PASSWORD_CODE_CORRECT.value:
+                    self.window.show_success_popup("Verification code correct. Please enter a new password.", self.window.reset_password_window)
+                    return
+                
+                case ProtocolOpcodes.FORGOT_PASSWORD_CODE_INCORRECT.value:
+                    self.window.forgot_password_code_window(
+                        f'Invalid verification code: "{code}". Please try again.'
+                    )
+                    return
+                            
+                case ProtocolOpcodes.ERROR.value:
+                    error_code = self.handle_error(response)
+                    match error_code:
+                        case ErrorCodes.INVALID_CODE.value:
+                            self.window.forgot_password_code_window("Invalid code format.")
+                        case ErrorCodes.CODE_EXPIRED.value:
+                            self.window.forgot_password_code_window("Verification code expired. Please request a new one.")
+                        case ErrorCodes.SERVER_ERROR.value:
+                            self.window.forgot_password_code_window("Server error.")
+                        case _:
+                            self.invalid_response(response)
 
-            case _:
-                self.invalid_response(response)
+                case _:
+                    self.invalid_response(response)
+        except Exception as e:
+            logger.error(f"Exception in forgot_password_code: {e}")
+            self.window.forgot_password_code_window(f"Error: {e}")
     
     @verify_reset_password_args
     def reset_password(self, password: str) -> None:
-        self.protocol.send_reset_password(self.server, password)
-        response = self.protocol.recv_data(self.server)
-        opcode = response[0]
-        match opcode:
-            case ProtocolOpcodes.ACKNOWLEDGMENT.value:
-                self.window.show_success_popup("Password reset successfully!", self.window.login_window)
-                return
-            
-            case ProtocolOpcodes.ERROR.value:
-                error_code = self.handle_error(response)
-                match error_code:
-                    case ErrorCodes.INVALID_PASSWORD.value:
-                        self.window.reset_password_window("Invalid password. Must be 5-20 characters and contain at least one number.")
-                    case _:
-                        self.invalid_response(response)
+        try:
+            self.protocol.send_reset_password(self.server, password)
+            response = self.protocol.recv_data(self.server)
+            opcode = response[0]
+            match opcode:
+                case ProtocolOpcodes.ACKNOWLEDGMENT.value:
+                    self.window.show_success_popup("Password reset successfully!", self.window.login_window)
+                    return
+                
+                case ProtocolOpcodes.ERROR.value:
+                    error_code = self.handle_error(response)
+                    match error_code:
+                        case ErrorCodes.INVALID_PASSWORD.value:
+                            self.window.reset_password_window("Invalid password. Must be 5-20 characters and contain at least one number.")
+                        case ErrorCodes.SERVER_ERROR.value:
+                            self.window.reset_password_window("Server error.")
+                        case _:
+                            self.invalid_response(response)
 
-            case _:
-                self.invalid_response(response)
+                case _:
+                    self.invalid_response(response)
+        except Exception as e:
+            logger.error(f"Exception in reset_password: {e}")
+            self.window.reset_password_window(f"Error: {e}")
 
     def get_blocked_domains(self):
         try:
@@ -569,6 +619,8 @@ class Client:
                     match error_code:
                         case ErrorCodes.NOT_LOGGED_IN.value:
                             self.window.history_window("You must be logged in to view blocked domains.")
+                        case ErrorCodes.SERVER_ERROR.value:
+                            self.window.history_window("Server error.")
                         case _:
                             self.invalid_response(response)
 
@@ -576,83 +628,110 @@ class Client:
                     self.invalid_response(response)
 
         except Exception as e:
-            logger.error(f"Failed to get blocked domains: {e}")
+            logger.error(f"Exception in get_blocked_domains: {e}")
+            self.window.history_window(f"Error: {e}")
             return []
 
     def get_all_users(self):
-        self.protocol.send_get_all_users(self.server)
-        response = self.protocol.recv_data(self.server)
-        opcode = response[0]
-        if opcode == ProtocolOpcodes.ALL_USERS_RESPONSE.value:
-            # Each user: username,email,password,salt
-            users = [tuple(user.split(",")) for user in response[1:] if user]
-            return users
-        elif opcode == ProtocolOpcodes.ERROR.value:
-            error_code = self.handle_error(response)
-            match error_code:
-                case ErrorCodes.NOT_ADMIN.value:
-                    self.window.admin_panel_window("You must be admin to view users.")
-                case _:
-                    logger.error("Failed to get all users from server")
+        try:
+            self.protocol.send_get_all_users(self.server)
+            response = self.protocol.recv_data(self.server)
+            opcode = response[0]
+            if opcode == ProtocolOpcodes.ALL_USERS_RESPONSE.value:
+                # Each user: username,email,password,salt
+                users = [tuple(user.split(",")) for user in response[1:] if user]
+                return users
+            elif opcode == ProtocolOpcodes.ERROR.value:
+                error_code = self.handle_error(response)
+                match error_code:
+                    case ErrorCodes.NOT_ADMIN.value:
+                        self.window.admin_panel_window("You must be admin to view users.")
+                    case ErrorCodes.SERVER_ERROR.value:
+                        self.window.admin_panel_window("Server error.")
+                    case _:
+                        logger.error("Failed to get all users from server")
+                return []
+            else:
+                self.invalid_response(response)
+        except Exception as e:
+            logger.error(f"Exception in get_all_users: {e}")
+            self.window.admin_panel_window(f"Error: {e}")
             return []
-        else:
-            self.invalid_response(response)
 
     def get_all_domains(self):
-        self.protocol.send_get_all_domains(self.server)
-        response = self.protocol.recv_data(self.server)
-        opcode = response[0]
-        if opcode == ProtocolOpcodes.ALL_DOMAINS_RESPONSE.value:
-            # Each domain: domain,username,time,source,is_blocked
-            return [
-                (
-                    d, u,
-                    datetime.fromtimestamp(float(t)).strftime('%Y-%m-%d %H:%M:%S'),
-                    s, b
-                )
-                for entry in response[1:] if entry
-                for d, u, t, s, b in [entry.split(",")]
-            ]
-        elif opcode == ProtocolOpcodes.ERROR.value:
-            error_code = self.handle_error(response)
-            match error_code:
-                case ErrorCodes.NOT_ADMIN.value:
-                    self.window.admin_panel_window("You must be admin to view domains.")
-                case _:
-                    logger.error("Failed to get all domains from server")
+        try:
+            self.protocol.send_get_all_domains(self.server)
+            response = self.protocol.recv_data(self.server)
+            opcode = response[0]
+            if opcode == ProtocolOpcodes.ALL_DOMAINS_RESPONSE.value:
+                # Each domain: domain,username,time,source,is_blocked
+                return [
+                    (
+                        d, u,
+                        datetime.fromtimestamp(float(t)).strftime('%Y-%m-%d %H:%M:%S'),
+                        s, b
+                    )
+                    for entry in response[1:] if entry
+                    for d, u, t, s, b in [entry.split(",")]
+                ]
+            elif opcode == ProtocolOpcodes.ERROR.value:
+                error_code = self.handle_error(response)
+                match error_code:
+                    case ErrorCodes.NOT_ADMIN.value:
+                        self.window.admin_panel_window("You must be admin to view domains.")
+                    case ErrorCodes.SERVER_ERROR.value:
+                        self.window.admin_panel_window("Server error.")
+                    case _:
+                        logger.error("Failed to get all domains from server")
+                return []
+            else:
+                self.invalid_response(response)
+        except Exception as e:
+            logger.error(f"Exception in get_all_domains: {e}")
+            self.window.admin_panel_window(f"Error: {e}")
             return []
-        else:
-            self.invalid_response(response)
 
     def delete_user(self, username):
-        self.protocol.send_delete_user(self.server, username)
-        response = self.protocol.recv_data(self.server)
-        opcode = response[0]
-        if opcode == ProtocolOpcodes.ACKNOWLEDGMENT.value:
-            logger.info(f"User '{username}' deleted successfully")
-            return True
-        elif opcode == ProtocolOpcodes.ERROR.value:
-            error_code = self.handle_error(response)
-            match error_code:
-                case ErrorCodes.NOT_ADMIN.value:
-                    self.window.show_users_table()
-                    logger.error("You must be admin to delete users.")
-                case ErrorCodes.CANNOT_DELETE_ADMIN.value:
-                    self.window.show_users_table()
-                    logger.error("Cannot delete admin user.")
-                case _:
-                    logger.error(f"Failed to delete user '{username}'")
+        try:
+            self.protocol.send_delete_user(self.server, username)
+            response = self.protocol.recv_data(self.server)
+            opcode = response[0]
+            if opcode == ProtocolOpcodes.ACKNOWLEDGMENT.value:
+                logger.info(f"User '{username}' deleted successfully")
+                return True
+            elif opcode == ProtocolOpcodes.ERROR.value:
+                error_code = self.handle_error(response)
+                match error_code:
+                    case ErrorCodes.NOT_ADMIN.value:
+                        self.window.show_users_table()
+                        logger.error("You must be admin to delete users.")
+                    case ErrorCodes.CANNOT_DELETE_ADMIN.value:
+                        self.window.show_users_table()
+                        logger.error("Cannot delete admin user.")
+                    case ErrorCodes.SERVER_ERROR.value:
+                        self.window.show_users_table()
+                        logger.error("Server error.")
+                    case _:
+                        logger.error(f"Failed to delete user '{username}'")
+                return False
+            else:
+                self.invalid_response(response)
+        except Exception as e:
+            logger.error(f"Exception in delete_user: {e}")
+            self.window.show_users_table()
             return False
-        else:
-            self.invalid_response(response)
 
     def get_current_username(self):
-        self.protocol.send_get_current_username(self.server)
-        response = self.protocol.recv_data(self.server)
-        opcode = response[0]
-        if opcode == ProtocolOpcodes.CURRENT_USERNAME_RESPONSE.value:
-            return response[1] if len(response) > 1 else "guest"
-        else:
+        try:
+            self.protocol.send_get_current_username(self.server)
+            response = self.protocol.recv_data(self.server)
+            opcode = response[0]
+            if opcode == ProtocolOpcodes.CURRENT_USERNAME_RESPONSE.value:
+                return response[1] if len(response) > 1 else "guest"
+            else:
+                return "guest"
+        except Exception as e:
+            logger.error(f"Exception in get_current_username: {e}")
             return "guest"
 
     def handle_error(self, response: list) -> int:
@@ -766,6 +845,32 @@ class Client:
             self.window = gui.GUI(self)
             self.window.show()
             self.app.exec()
+
+    def find_server_in_lan(self):
+        """Broadcasts a UDP message to find the server in the LAN and connects if found."""
+        try:
+            udp_sock = socket(AF_INET, SOCK_DGRAM)
+            udp_sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+            udp_sock.settimeout(3)
+            udp_sock.sendto(Settings.BROADCAST_MESSAGE.value, ('<broadcast>', Settings.BROADCAST_PORT.value))
+            logger.info("Broadcasted server discovery message on LAN")
+            while True:
+                try:
+                    data, addr = udp_sock.recvfrom(1024)
+                    if data.startswith(Settings.BROADCAST_RESPONSE.value):
+                        parts = data.decode().split(":")
+                        server_ip = addr[0]
+                        server_port = parts[1] if len(parts) > 1 else Settings.SERVER_PORT.value
+                        logger.info(f"Found server at {server_ip}:{server_port}")
+                        self.connect_to_server(server_ip, server_port)
+                        return
+                except Exception as e:
+                    logger.error(f"Error receiving broadcast response: {e}")
+                    break
+            self.window.connect_to_server_window("No server found in LAN.")
+        except Exception as e:
+            logger.error(f"Exception in find_server_in_lan: {e}")
+            self.window.connect_to_server_window(f"Error: {e}")
 
 if __name__ == "__main__":
     c = Client.create_client()
