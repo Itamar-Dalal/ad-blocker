@@ -20,6 +20,7 @@ import logging
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
 import threading
+from network import UDPHandler
 
 IP = "0.0.0.0"
 PORT = Settings.SERVER_PORT.value
@@ -46,6 +47,7 @@ class Server:
         self.logged_in_users = {}
         self.login_attempts = {}
         self.register_lock = Lock()
+        self.udp_handler = UDPHandler()
 
     def __repr__(self) -> str:
         return f"Server({self.ip}, {self.port})"
@@ -506,17 +508,18 @@ class Server:
         self.semaphore.release()
 
     def broadcast_listener(self):
-        """Listens for LAN discovery broadcasts and responds."""
+        """Listens for LAN discovery broadcasts and responds using UDPHandler."""
         udp_sock = socket(AF_INET, SOCK_DGRAM)
         udp_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         udp_sock.bind(('', Settings.BROADCAST_PORT.value))
         logger.info(f"Listening for LAN discovery broadcasts on UDP port {Settings.BROADCAST_PORT.value}")
         while True:
             try:
-                data, addr = udp_sock.recvfrom(1024)
+                data, addr = self.udp_handler.recv_from(udp_sock)
                 if data == Settings.BROADCAST_MESSAGE.value:
-                    logger.info(f"Received LAN discovery from {addr}, responding")
-                    udp_sock.sendto(Settings.BROADCAST_RESPONSE.value + f":{self.port}".encode(), addr)
+                    logger.info(f"Received LAN discovery from {addr}, responding...")
+                    response = Settings.BROADCAST_RESPONSE.value + f":{self.port}".encode()
+                    self.udp_handler.send_to(udp_sock, response, addr)
             except Exception as e:
                 logger.error(f"Error in broadcast_listener: {e}")
 

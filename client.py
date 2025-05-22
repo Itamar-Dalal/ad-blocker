@@ -18,6 +18,7 @@ from Crypto.Cipher import PKCS1_OAEP
 from ctypes import wintypes
 from dns_config import DNSConfig
 from datetime import datetime
+from network import UDPHandler
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class Client:
         self.protocol = Protocol()
         self.logged_in = False
         self.session_key = None  # AES session key
+        self.udp_handler = UDPHandler()
 
     def __repr__(self) -> str:
         """Return a string representation of the Client."""
@@ -852,21 +854,19 @@ class Client:
             udp_sock = socket(AF_INET, SOCK_DGRAM)
             udp_sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
             udp_sock.settimeout(3)
-            udp_sock.sendto(Settings.BROADCAST_MESSAGE.value, ('<broadcast>', Settings.BROADCAST_PORT.value))
+            self.udp_handler.send_to(udp_sock, Settings.BROADCAST_MESSAGE.value, ('<broadcast>', Settings.BROADCAST_PORT.value))
             logger.info("Broadcasted server discovery message on LAN")
             while True:
-                try:
-                    data, addr = udp_sock.recvfrom(1024)
-                    if data.startswith(Settings.BROADCAST_RESPONSE.value):
-                        parts = data.decode().split(":")
-                        server_ip = addr[0]
-                        server_port = parts[1] if len(parts) > 1 else Settings.SERVER_PORT.value
-                        logger.info(f"Found server at {server_ip}:{server_port}")
-                        self.connect_to_server(server_ip, server_port)
-                        return
-                except Exception as e:
-                    logger.error(f"Error receiving broadcast response: {e}")
+                data, addr = self.udp_handler.recv_from(udp_sock)
+                if data is None:
                     break
+                if data.startswith(Settings.BROADCAST_RESPONSE.value):
+                    parts = data.decode().split(":")
+                    server_ip = addr[0]
+                    server_port = parts[1] if len(parts) > 1 else str(Settings.SERVER_PORT.value)
+                    logger.info(f"Found server at {server_ip}:{server_port}")
+                    self.connect_to_server(server_ip, server_port)
+                    return
             self.window.connect_to_server_window("No server found in LAN.")
         except Exception as e:
             logger.error(f"Exception in find_server_in_lan: {e}")
