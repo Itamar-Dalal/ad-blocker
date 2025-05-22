@@ -41,13 +41,16 @@ class Client:
         self.udp_handler = UDPHandler()
 
     def __repr__(self) -> str:
-        """Return a string representation of the Client."""
         return f"Client()"
-
+    
     @classmethod
     def create_client(cls) -> "Client":
-        """Factory method to create and return a Client instance."""
-        return cls()
+        try:
+            # ...existing code...
+            return cls()
+        except Exception as e:
+            logger.error(f"Exception in create_client: {e}")
+            return None
 
     def verify_connection_args(call: Callable):
         def func(self, ip: str, port: str):

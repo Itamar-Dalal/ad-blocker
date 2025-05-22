@@ -50,10 +50,18 @@ class Server:
         self.udp_handler = UDPHandler()
 
     def __repr__(self) -> str:
-        return f"Server({self.ip}, {self.port})"
+        try:
+            return f"Server({self.ip}, {self.port})"
+        except Exception as e:
+            logger.error(f"Exception in __repr__: {e}")
+            return "Server()"
 
     def create_server(cls) -> "Server":
-        return cls()
+        try:
+            return cls()
+        except Exception as e:
+            logger.error(f"Exception in create_server: {e}")
+            return None
 
     def handle_client(self, cli_sock, addr):
         session_key = None
@@ -501,11 +509,14 @@ class Server:
         self.protocol.send_error(cli_sock, ErrorCodes.INVALID_REQUEST.value)
 
     def close_client_connection(self, cli_sock, addr):
-        logger.info(f"Closing connection with client at {addr}...")
-        if cli_sock in self.logged_in_users:
-            del self.logged_in_users[cli_sock]
-        cli_sock.close()
-        self.semaphore.release()
+        try:
+            logger.info(f"Closing connection with client at {addr}...")
+            if cli_sock in self.logged_in_users:
+                del self.logged_in_users[cli_sock]
+            cli_sock.close()
+            self.semaphore.release()
+        except Exception as e:
+            logger.error(f"Error closing client connection: {e}")
 
     def broadcast_listener(self):
         """Listens for LAN discovery broadcasts and responds using UDPHandler."""
