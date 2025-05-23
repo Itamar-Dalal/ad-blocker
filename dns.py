@@ -1,14 +1,16 @@
 __author__ = "Itamar Dalal"
 
-from socket import socket, AF_INET, SOCK_DGRAM, timeout
+from socket import socket, AF_INET, SOCK_DGRAM, timeout, SOL_SOCKET, SO_REUSEADDR
 from dnslib import DNSRecord
 from network import UDPHandler
 from database import DomainsDBHandler
+from settings import Settings
 import logging
 import asyncio
 from threading import Thread
 from queue import Queue
 from time import time
+import psutil
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -35,6 +37,7 @@ class DNSHandler:
             self.sockets = []
             self.active_resolvers = []
             self.cache = {}  # (domain, qtype, qclass): (DNSRecord, expire_time)
+            self.broadcast_sock = None  # Add broadcast socket
             for server in DNSHandler.DNS_RESOLVER_SERVERS:
                 try:
                     sock = socket(AF_INET, SOCK_DGRAM)
@@ -209,30 +212,89 @@ class DNSHandler:
             loop = asyncio.get_running_loop()
             while True:
                 try:
-                    data, addr = sock.recvfrom(512)
+                    data, addr = await loop.sock_recvfrom(sock, 512)
                     asyncio.create_task(self.handle_client(data, addr, sock))
                 except Exception as ie:
                     logger.error(f"Exception in handle_socket loop: {ie}")
         except Exception as e:
             logger.error(f"Exception in handle_socket: {e}")
 
+    async def broadcast_listener(self) -> None:
+        """Listens for LAN discovery broadcasts and responds asynchronously."""
+        try:
+            self.broadcast_sock = socket(AF_INET, SOCK_DGRAM)
+            self.broadcast_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+            self.broadcast_sock.bind(('', Settings.DNS_BROADCAST_PORT.value))
+            logger.info(f"Listening for LAN discovery broadcasts on UDP port {Settings.DNS_BROADCAST_PORT.value}")
+            loop = asyncio.get_running_loop()
+            while True:
+                try:
+                    data, addr = await loop.sock_recvfrom(self.broadcast_sock, 512)
+                    if data.startswith(Settings.DNS_BROADCAST_MESSAGE.value):
+                        try:
+                            message_parts = data.decode().split("|")
+                            if len(message_parts) > 1:
+                                interface = message_parts[1]
+                                ip_addr = self.get_ip_for_interface(interface)
+                                if ip_addr:
+                                    logger.info(f"Received LAN discovery from {addr} for interface {interface}, responding with DNS IP")
+                                    response = Settings.DNS_BROADCAST_RESPONSE.value + f":{ip_addr}".encode()
+                                    await loop.sock_sendto(self.broadcast_sock, response, addr)
+                                else:
+                                    logger.warning(f"No IP found for interface {interface}")
+                            else:
+                                logger.warning("Interface not specified in broadcast message")
+                        except Exception as e:
+                            logger.error(f"Error processing broadcast message: {e}")
+                except Exception as e:
+                    logger.error(f"Error in broadcast_listener: {e}")
+        except Exception as e:
+            logger.error(f"Error setting up broadcast listener: {e}")
+
+    @staticmethod
+    def get_ip_for_interface(interface_name: str) -> str:
+        """Gets the IP address for a given network interface using ipconfig."""
+        try:
+            addrs = psutil.net_if_addrs()
+            if interface_name in addrs:
+                for snic in addrs[interface_name]:
+                    if snic.family.name == 'AF_INET':  # IPv4
+                        return snic.address
+            logger.warning(f"No IPv4 address found for interface {interface_name}")
+            return None
+        except Exception as e:
+            logger.error(f"Error getting IP for interface {interface_name}: {e}")
+            return None
+
     async def run(self) -> None:
         try:
-            """Runs the DNS server using asyncio for IPv4."""
+            """Runs the DNS server and broadcast listener using asyncio for IPv4."""
             server_sock = socket(AF_INET, SOCK_DGRAM)
             server_sock.bind((self.listen_ip, self.listen_port))
             logger.info(f"DNS server listening on {self.listen_ip}:{self.listen_port}")
-            await self.handle_socket(server_sock)
+
+            # Run DNS server and broadcast listener concurrently
+            await asyncio.gather(
+                self.handle_socket(server_sock),
+                self.broadcast_listener()
+            )
         except OSError as e:
             logger.error(f"OS error in run: {e}")
         except Exception as e:
             logger.error(f"Exception in DNSHandler.run: {e}")
+        finally:
+            # Ensure sockets are closed
+            self.close()
+            if self.broadcast_sock:
+                self.broadcast_sock.close()
 
     def close(self) -> None:
         try:
-            """Closes all resolver sockets."""
+            """Closes all resolver sockets and broadcast socket."""
             for sock, _ in self.sockets:
                 sock.close()
+            if self.broadcast_sock:
+                self.broadcast_sock.close()
         except Exception as e:
             logger.error(f"Exception in close: {e}")
 

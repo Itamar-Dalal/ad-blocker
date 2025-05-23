@@ -733,7 +733,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Unblock Domain Window")
     
     def connect_to_dns_window(self, error_msg=None):
-        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 85 if error_msg else Styles.WINDOW_HEIGHT + 45)
+        self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 145 if error_msg else Styles.WINDOW_HEIGHT + 105)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout()
@@ -746,9 +746,9 @@ class GUI(QMainWindow):
         dns_ip_label = QLabel("DNS IP:")
         dns_ip_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         dns_ip_label.setStyleSheet(Styles.INPUT_LABEL_STYLE)
-        dns_ip_input = QLineEdit()
-        dns_ip_input.setPlaceholderText("Enter DNS IP")
-        dns_ip_input.setStyleSheet(Styles.INPUT_STYLE)
+        self.dns_ip_input = QLineEdit()
+        self.dns_ip_input.setPlaceholderText("Enter DNS IP")
+        self.dns_ip_input.setStyleSheet(Styles.INPUT_STYLE)
 
         interface_label = QLabel("Select Interface:")
         interface_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -760,7 +760,7 @@ class GUI(QMainWindow):
 
         dns_ip_layout = QVBoxLayout()
         dns_ip_layout.addWidget(dns_ip_label)
-        dns_ip_layout.addWidget(dns_ip_input)
+        dns_ip_layout.addWidget(self.dns_ip_input)
 
         interface_layout = QVBoxLayout()
         interface_layout.addWidget(interface_label)
@@ -780,11 +780,17 @@ class GUI(QMainWindow):
             error_label.setWordWrap(True)
             layout.addWidget(error_label)
             logger.error(f"Error in connect_to_dns_window: {error_msg}")
-
+        
         connect_button = QPushButton("Connect to DNS")
         connect_button.setStyleSheet(Styles.BUTTON_STYLE)
-        connect_button.clicked.connect(lambda: self.client.connect_to_dns(interface_dropdown.currentText(), dns_ip_input.text()))
+        connect_button.clicked.connect(lambda: self.client.connect_to_dns(interface_dropdown.currentText(), self.dns_ip_input.text()))
         layout.addWidget(connect_button)
+
+        # Add Find DNS in LAN button
+        find_dns_button = QPushButton("Find DNS in LAN")
+        find_dns_button.setStyleSheet(Styles.BUTTON_STYLE)
+        find_dns_button.clicked.connect(lambda: self.client.find_dns_in_lan(interface_dropdown.currentText()))
+        layout.addWidget(find_dns_button)
 
         return_button = QPushButton("Return Home")
         return_button.setStyleSheet(Styles.BUTTON_STYLE)
@@ -793,6 +799,10 @@ class GUI(QMainWindow):
 
         central_widget.setLayout(layout)
         logger.info("Navigated to Connect to DNS Window")
+
+    def update_dns_ip_field(self, dns_ip):
+        """Updates the DNS IP input field with the provided IP address."""
+        self.dns_ip_input.setText(dns_ip)
 
     def admin_panel_window(self, error_msg=None):
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)

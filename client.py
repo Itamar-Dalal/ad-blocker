@@ -45,12 +45,7 @@ class Client:
     
     @classmethod
     def create_client(cls) -> "Client":
-        try:
-            # ...existing code...
-            return cls()
-        except Exception as e:
-            logger.error(f"Exception in create_client: {e}")
-            return None
+        return cls()
 
     def verify_connection_args(call: Callable):
         def func(self, ip: str, port: str):
@@ -874,6 +869,32 @@ class Client:
         except Exception as e:
             logger.error(f"Exception in find_server_in_lan: {e}")
             self.window.connect_to_server_window(f"Error: {e}")
+
+    def find_dns_in_lan(self, interface: str):
+        """Broadcasts a UDP message to find a DNS server in the LAN and fills the DNS IP field if found."""
+        try:
+            udp_sock = socket(AF_INET, SOCK_DGRAM)
+            udp_sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+            udp_sock.settimeout(3)
+            message = Settings.DNS_BROADCAST_MESSAGE.value + f"|{interface}".encode()
+            self.udp_handler.send_to(udp_sock, message, ('<broadcast>', Settings.DNS_BROADCAST_PORT.value))
+            logger.info(f"Broadcasted DNS discovery message on LAN for interface: {interface}")
+            while True:
+                data, addr = self.udp_handler.recv_from(udp_sock)
+                if data is None:
+                    break
+                if data.startswith(Settings.DNS_BROADCAST_RESPONSE.value):
+                    parts = data.decode().split(":")
+                    dns_ip = parts[1]
+                    logger.info(f"Found DNS server at {dns_ip}")
+                    # Update the DNS IP input field in the GUI
+                    self.window.update_dns_ip_field(dns_ip)
+                    return
+            self.window.connect_to_dns_window("No DNS server found in LAN.")
+        except Exception as e:
+            logger.error(f"Exception in find_dns_in_lan: {e}")
+            self.window.connect_to_dns_window(f"Error: {e}")
+
 
 if __name__ == "__main__":
     c = Client.create_client()
