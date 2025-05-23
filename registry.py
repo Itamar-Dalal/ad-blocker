@@ -44,7 +44,7 @@ class RegistryHandler:
                     self.change_theme(RegistryHandler.LIGHT_THEME) # Default theme is light
         except Exception as e:
             logger.error(f"Failed to initialize RegistryHandler: {e}")
-                
+
     @staticmethod
     def change_theme(theme_value: int):
         """Change the theme setting in the registry."""
