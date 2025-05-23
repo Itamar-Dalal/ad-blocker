@@ -23,6 +23,7 @@ class GUI(QMainWindow):
     DEFAULT_THEME = 2
 
     def __init__(self, c: Any) -> None:
+        """Initialize the GUI and set up the initial window."""
         super().__init__()
         self.client = c
         self.setWindowTitle(Styles.WINDOW_TITLE)
@@ -38,6 +39,7 @@ class GUI(QMainWindow):
 
     @staticmethod
     def get_app_icon() -> QIcon:
+        """Return the application icon."""
         icon = QIcon(Styles.ICON_PATH)
         if not icon.isNull():
             return icon
@@ -46,10 +48,12 @@ class GUI(QMainWindow):
             return QIcon()  # Return empty icon as fallback
     
     def change_logged_in_status(self, logged_in: bool) -> None:
+        """Update the logged-in status and notify via logger."""
         self.logged_in = logged_in
         logger.info(f"Logged-in status changed to: {self.logged_in}")
     
     def welcome_window(self):
+        """Display the welcome window."""
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -95,6 +99,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Welcome Window")
 
     def connect_to_server_window(self, error_msg=None):
+        """Display the window for connecting to a server, optionally showing an error message."""
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 120 if error_msg else Styles.WINDOW_HEIGHT + 90)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -161,6 +166,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Connect To Server Window")
 
     def home_window(self):
+        """Display the main home window once logged in."""
         self.setFixedSize(Styles.WINDOW_WIDTH + 375, Styles.WINDOW_HEIGHT + 300)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -267,6 +273,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Home Window")
 
     def login_window(self, error_msg=None):
+        """Display the login window with an optional error message."""
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 180 if error_msg else Styles.WINDOW_HEIGHT + 150)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -344,6 +351,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Login Window")
 
     def forgot_password_window(self, error_msg=None):
+        """Display the forgot password window, optionally with an error message."""
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -388,6 +396,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Forgot Password Window")
     
     def forgot_password_code_window(self, error_msg=None):
+        """Display the forgotten password code verification window."""
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -432,6 +441,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Forgot Password Code Window")
     
     def reset_password_window(self, error_msg=None):
+        """Display the reset password window for entering a new password."""
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT - 70 if error_msg else Styles.WINDOW_HEIGHT - 90)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -478,6 +488,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Reset Password Window")
     
     def change_password_window(self, error_msg=None):
+        """Display the change password window for sending a verification code."""
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -522,6 +533,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Change Password Window")
     
     def block_domain_window(self, error_msg=None):
+        """Display the window to block a domain with an optional error message."""
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT if not error_msg else Styles.WINDOW_HEIGHT - 10)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -566,6 +578,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Block Domain Window")
     
     def create_account_window(self, error_msg=None):
+        """Display the account creation window with an optional error message."""
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 220 if error_msg else Styles.WINDOW_HEIGHT + 170)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -645,6 +658,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Create Account Window")
 
     def email_verification_window(self, error_msg=None):
+        """Display the email verification window for new account setup."""
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT if error_msg else Styles.WINDOW_HEIGHT - 30)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -689,6 +703,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Email Verification Window")
     
     def unblock_domain_window(self, error_msg=None):
+        """Display the window to unblock a previously blocked domain."""
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT if not error_msg else Styles.WINDOW_HEIGHT - 10)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -733,6 +748,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Unblock Domain Window")
     
     def connect_to_dns_window(self, error_msg=None):
+        """Display the window to connect to a DNS server, optionally with error info."""
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT + 145 if error_msg else Styles.WINDOW_HEIGHT + 105)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -801,10 +817,11 @@ class GUI(QMainWindow):
         logger.info("Navigated to Connect to DNS Window")
 
     def update_dns_ip_field(self, dns_ip):
-        """Updates the DNS IP input field with the provided IP address."""
+        """Update the DNS IP input field with the given IP address."""
         self.dns_ip_input.setText(dns_ip)
 
     def admin_panel_window(self, error_msg=None):
+        """Display the admin panel window with optional error information."""
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -907,6 +924,7 @@ class GUI(QMainWindow):
         logger.warning(f"Domain '{domain_to_search}' not found in the table")
 
     def show_domains_table(self):
+        """Show the domains table in the admin panel."""
         self.setFixedSize(Styles.WINDOW_WIDTH + 600, Styles.WINDOW_HEIGHT + 300)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -954,6 +972,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Domains Table in Admin Panel")
 
     def show_users_table(self):
+        """Show the users table in the admin panel."""
         self.setFixedSize(Styles.WINDOW_WIDTH + 600, Styles.WINDOW_HEIGHT + 300)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -1023,10 +1042,12 @@ class GUI(QMainWindow):
         logger.info("Navigated to Users Table in Admin Panel")
 
     def delete_user_from_server(self, username):
+        """Request deletion of a user from the server."""
         self.client.delete_user(username)
         self.show_users_table()
 
     def settings_window(self):
+        """Display the settings window."""
         self.setFixedSize(Styles.WINDOW_WIDTH, Styles.WINDOW_HEIGHT)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -1067,6 +1088,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Settings Window")
 
     def change_theme_window(self):
+        """Display the theme change window."""
         self.setFixedSize(Styles.WINDOW_WIDTH + 600, Styles.WINDOW_HEIGHT + 200)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -1106,6 +1128,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to Change Theme Window")
     
     def history_window(self, error_msg=None):
+        """Display the history window for viewing blocked domains."""
         self.setFixedSize(Styles.WINDOW_WIDTH + 200, Styles.WINDOW_HEIGHT + 250)
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -1177,6 +1200,7 @@ class GUI(QMainWindow):
         logger.info("Navigated to History Window")
 
     def update_theme(self, theme):
+        """Apply the selected theme to the application."""
         try:
             is_default_theme: bool = (theme == GUI.DEFAULT_THEME)
             if theme == GUI.LIGHT_THEME:
@@ -1202,6 +1226,7 @@ class GUI(QMainWindow):
             logger.error(f"Failed to update theme: {e}")
 
     def toggle_password_visibility(self, password_input, button):
+        """Toggle the visibility of the password input field."""
         try:
             if button.isChecked():
                 password_input.setEchoMode(QLineEdit.EchoMode.Normal)
@@ -1215,6 +1240,7 @@ class GUI(QMainWindow):
             logger.error(f"Failed to toggle password visibility: {e}")
 
     def show_success_popup(self, message: str, on_close=None):
+        """Display a popup message indicating success."""
         msg_box = QMessageBox(self)
         msg_box.setIcon(QMessageBox.Icon.Information)
         msg_box.setWindowTitle("Success")
@@ -1225,6 +1251,7 @@ class GUI(QMainWindow):
         msg_box.exec()
 
     def show_error_popup(self, message: str, on_close=None):
+        """Display a popup message indicating an error."""
         msg_box = QMessageBox(self)
         msg_box.setIcon(QMessageBox.Icon.Critical)
         msg_box.setWindowTitle("Error")

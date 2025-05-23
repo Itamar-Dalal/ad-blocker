@@ -11,13 +11,7 @@ class DNSConfig:
 
     @staticmethod
     def change_dns(interface_name, primary_dns):
-        """
-        Change DNS server settings for a specified network interface on Windows.
-        
-        Parameters:
-        - interface_name: Name of the network interface (e.g., "Ethernet", "Wi-Fi")
-        - primary_dns: Primary DNS server IP address (e.g., "8.8.8.8")
-        """
+        """Change the primary DNS server for the specified network interface."""
         try:
             # Command to set primary DNS
             cmd = f'netsh interface ip set dns name="{interface_name}" source=static addr={primary_dns}'
@@ -36,9 +30,7 @@ class DNSConfig:
 
     @staticmethod
     def get_network_interfaces():
-        """
-        Retrieve a list of network interface names on the system.
-        """
+        """Retrieve a list of available network interface names."""
         try:
             cmd = 'netsh interface show interface'
             # Use utf-8 encoding and ignore errors to handle non-ASCII characters

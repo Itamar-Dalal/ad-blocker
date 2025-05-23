@@ -35,6 +35,7 @@ class Server:
     MAX_ATTEMPTS = 5
 
     def __init__(self, ip=IP, port=PORT) -> None:
+        """Initialize the server with the given IP and port and set up internal data structures."""
         self.ip = ip
         self.port = port
         self.srv_sock = socket(AF_INET, SOCK_STREAM)
@@ -50,6 +51,7 @@ class Server:
         self.udp_handler = UDPHandler()
 
     def __repr__(self) -> str:
+        """Return a string representation of the Server."""
         try:
             return f"Server({self.ip}, {self.port})"
         except Exception as e:
@@ -57,6 +59,7 @@ class Server:
             return "Server()"
 
     def create_server(cls) -> "Server":
+        """Factory method to create a new Server instance."""
         try:
             return cls()
         except Exception as e:
@@ -64,6 +67,7 @@ class Server:
             return None
 
     def handle_client(self, cli_sock, addr):
+        """Handle communication with a connected client."""
         session_key = None
         logger.info(f"New client connected from {addr}")
         try:
@@ -122,6 +126,7 @@ class Server:
             self.close_client_connection(cli_sock, addr)
 
     def handle_register(self, cli_sock, addr, request: list) -> None:
+        """Process a client registration request."""
         try:
             logger.info(f"Handling registration from {addr}: {request[1:]}")
             with self.register_lock:
@@ -184,6 +189,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def send_verification_code(receiver_email: str, to_verify_email: bool) -> str:
+        """Send an email verification or password reset code to the receiver."""
         try:
             code_length = Settings.EMAIL_CODE_LENGTH.value
             code = f"{randrange(10 ** (code_length - 1), (10 ** code_length) - 1):0{code_length}d}"
@@ -237,6 +243,7 @@ class Server:
             return None
 
     def handle_forgot_password(self, cli_sock, addr, request: list) -> None:
+        """Handle a forgot password request."""
         try:
             logger.info(f"Handling forgot password from {addr}: {request[1:]}")
             email = request[1]
@@ -300,6 +307,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def handle_login(self, cli_sock, addr, request: list) -> None:
+        """Process a login request from the client."""
         try:
             logger.info(f"Handling login from {addr}: {request[1:]}")
             current_time = time()
@@ -345,6 +353,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def handle_logout(self, cli_sock, addr) -> None:
+        """Process a logout request from a client."""
         try:
             logger.info(f"Handling logout from {addr}")
             if cli_sock in self.logged_in_users:
@@ -358,6 +367,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def handle_add_domain(self, cli_sock, addr, request: list) -> None:
+        """Handle a request to add a domain to the block list."""
         try:
             logger.info(f"Handling add domain from {addr}: {request[1:]}")
             if cli_sock not in self.logged_in_users:
@@ -379,6 +389,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def handle_remove_domain(self, cli_sock, addr, request: list) -> None:
+        """Handle a request to remove a domain from the block list."""
         try:
             logger.info(f"Handling remove domain from {addr}: {request[1:]}")
             if cli_sock not in self.logged_in_users:
@@ -400,6 +411,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def handle_get_blocked_domains(self, cli_sock) -> None:
+        """Retrieve and send the list of domains blocked by the user."""
         try:
             logger.info(f"Handling get blocked domains")
             if cli_sock not in self.logged_in_users:
@@ -415,6 +427,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def handle_get_all_users(self, cli_sock):
+        """Retrieve and send a list of all users for the admin."""
         try:
             logger.info(f"Handling get all users")
             if cli_sock not in self.logged_in_users or self.logged_in_users[cli_sock] != Settings.ADMIN_USERNAME.value:
@@ -439,6 +452,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def handle_get_all_domains(self, cli_sock):
+        """Retrieve and send a list of all domains for the admin."""
         try:
             logger.info(f"Handling get all domains")
             if cli_sock not in self.logged_in_users or self.logged_in_users[cli_sock] != Settings.ADMIN_USERNAME.value:
@@ -460,6 +474,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def handle_delete_user(self, cli_sock, request):
+        """Handle a request from the admin to delete a user."""
         try:
             logger.info(f"Handling delete user: {request[1:] if len(request) > 1 else ''}")
             if cli_sock not in self.logged_in_users or self.logged_in_users[cli_sock] != Settings.ADMIN_USERNAME.value:
@@ -492,6 +507,7 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def handle_get_current_username(self, cli_sock):
+        """Send back the current username for the client."""
         try:
             logger.info(f"Handling get current username")
             username = f"{self.logged_in_users.get(cli_sock, 'guest')}{' (admin)' if cli_sock in self.logged_in_users and self.logged_in_users[cli_sock] == Settings.ADMIN_USERNAME.value else ''}"
@@ -505,10 +521,12 @@ class Server:
             self.protocol.send_error(cli_sock, ErrorCodes.SERVER_ERROR.value)
 
     def invalid_request(self, cli_sock, addr, request: list) -> None:
+        """Notify the client of an invalid request."""
         logger.warning(f"Invalid request received from client at {addr}: {request}")
         self.protocol.send_error(cli_sock, ErrorCodes.INVALID_REQUEST.value)
 
     def close_client_connection(self, cli_sock, addr):
+        """Close and clean up a client's connection."""
         try:
             logger.info(f"Closing connection with client at {addr}...")
             if cli_sock in self.logged_in_users:
@@ -519,7 +537,7 @@ class Server:
             logger.error(f"Error closing client connection: {e}")
 
     def broadcast_listener(self):
-        """Listens for LAN discovery broadcasts and responds using UDPHandler."""
+        """Listen for LAN discovery broadcasts and send responses."""
         udp_sock = socket(AF_INET, SOCK_DGRAM)
         udp_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         udp_sock.bind(('', Settings.BROADCAST_PORT.value))
@@ -535,6 +553,7 @@ class Server:
                 logger.error(f"Error in broadcast_listener: {e}")
 
     def run(self):
+        """Start the server, accepting client connections and handling UDP broadcasts."""
         logger.info("Starting server main loop")
         try:
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)

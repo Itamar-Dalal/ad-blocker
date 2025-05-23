@@ -12,10 +12,12 @@ class TCPHandler:
     size_header_size = 8
 
     def __init__(self, debug=False):
+        """Initialize the TCPHandler with an optional debug flag."""
         self.TCP_DEBUG = debug
         self.session_key = None  # AES session key for convenience
 
     def __log(self, prefix, data, max_to_print=100):
+        """Log data if debugging is enabled."""
         if not self.TCP_DEBUG:
             return
         data_to_log = data[:max_to_print]
@@ -28,6 +30,7 @@ class TCPHandler:
 
     @staticmethod
     def __recv_amount(sock, size=4):
+        """Receive an exact amount of bytes from the socket."""
         buffer = b""
         while size:
             new_buffer = sock.recv(size)
@@ -39,6 +42,7 @@ class TCPHandler:
 
     @staticmethod
     def encrypt(message, key):
+        """Encrypt the message using AES CBC mode."""
         cipher = AES.new(key, AES.MODE_CBC)
         ciphertext = cipher.encrypt(pad(message, AES.block_size))
         iv = cipher.iv
@@ -46,6 +50,7 @@ class TCPHandler:
 
     @staticmethod
     def decrypt(encrypted_message, key):
+        """Decrypt the message using AES CBC mode."""
         iv = encrypted_message[: AES.block_size]
         ciphertext = encrypted_message[AES.block_size :]
         cipher = AES.new(key, AES.MODE_CBC, iv)
@@ -53,6 +58,7 @@ class TCPHandler:
         return decrypted
 
     def recv_by_size(self, sock, return_type="string", key=None):
+        """Receive data from the socket using a fixed-size header."""
         try:
             data = b""
             size_bytes = self.__recv_amount(sock, self.size_header_size)
@@ -83,6 +89,7 @@ class TCPHandler:
         return data
 
     def send_with_size(self, sock, data, key=None):
+        """Send data with a size header, optionally encrypting it."""
         if len(data) == 0:
             return
         try:
@@ -102,9 +109,11 @@ class TCPHandler:
 
 class UDPHandler:
     def __init__(self, debug=False):
+        """Initialize the UDPHandler with an optional debug flag."""
         self.UDP_DEBUG = debug
 
     def __log(self, prefix, data, max_to_print=100):
+        """Log UDP data if debugging is enabled."""
         if not self.UDP_DEBUG:
             return
         data_to_log = data[:max_to_print]
@@ -116,7 +125,7 @@ class UDPHandler:
         logger.debug(f"{prefix}({len(data)})>>>{data_to_log}")
 
     def send_to(self, sock, data: bytes, addr):
-        """Send data to a specific address using UDP."""
+        """Send data to a specific UDP address."""
         if len(data) == 0:
             return
         try:
@@ -126,7 +135,7 @@ class UDPHandler:
             logger.error(f"Error sending data: {e}")
 
     def recv_from(self, sock, buffer_size=512):
-        """Receive data from a UDP socket."""
+        """Receive data and address information from a UDP socket."""
         try:
             data, addr = sock.recvfrom(buffer_size)
             self.__log("Received", data)

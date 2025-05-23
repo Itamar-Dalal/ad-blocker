@@ -27,17 +27,18 @@ class DNSHandler:
     CACHE_TTL = 60  # seconds
 
     def __init__(self, listen_ip: str = "0.0.0.0", listen_port: int = None) -> None:
+        """Initialize the DNSHandler with given IP and port, set up resolver sockets."""
         try:
             if listen_port is None:
                 listen_port = self.DNS_PORT        
             self.listen_ip = listen_ip
             self.listen_port = listen_port
-            self.blocked_domains = set(DomainsDBHandler().get_domains())  # Only blocked domains
+            self.blocked_domains = set(DomainsDBHandler().get_domains())
             self.udp_handler = UDPHandler()
             self.sockets = []
             self.active_resolvers = []
             self.cache = {}  # (domain, qtype, qclass): (DNSRecord, expire_time)
-            self.broadcast_sock = None  # Add broadcast socket
+            self.broadcast_sock = None
             for server in DNSHandler.DNS_RESOLVER_SERVERS:
                 try:
                     sock = socket(AF_INET, SOCK_DGRAM)
@@ -54,6 +55,7 @@ class DNSHandler:
             logger.error(f"Exception in DNSHandler.__init__: {e}")
 
     def _query_resolver(self, sock, server, data, queue):
+        """Send a query to the resolver and put the server in the queue if responsive."""
         try:
             sock.sendto(data, server)
             response, _ = sock.recvfrom(512)
@@ -63,8 +65,8 @@ class DNSHandler:
             logger.error(f"Exception in _query_resolver for resolver {server}: {e}")
 
     def test_resolvers(self) -> None:
+        """Test which resolvers are reachable by sending a test query."""
         try:
-            """Test which resolvers are reachable by sending a test query."""
             test_query = DNSRecord.question("example.com").pack()
             response_queue = Queue()
             threads = []
@@ -91,8 +93,8 @@ class DNSHandler:
         return f"DNSHandler(listen_ip={self.listen_ip}, listen_port={self.listen_port})"
 
     def get_cache_key(self, request: DNSRecord) -> tuple:
+        """Generate a key for caching and logging."""
         try:
-            """Generate a key for caching and logging."""
             domain_name = str(request.q.qname)[:-1]
             return (domain_name, request.q.qtype, request.q.qclass)
         except Exception as e:
@@ -100,8 +102,8 @@ class DNSHandler:
             return ()
 
     def handle_dns_request(self, data: bytes) -> bytes:
+        """Handles incoming DNS requests with caching."""
         try:
-            """Handles incoming DNS requests with caching."""
             request = DNSRecord.parse(data)
             key = self.get_cache_key(request)
             domain_name = key[0]
@@ -129,7 +131,7 @@ class DNSHandler:
                 logger.info(f"Domain {domain_name} is blocked")
                 return self.create_blocked_response(request)
             else:
-                logger.info(f"Domain {domain_name} is not blocked, forwarding request")
+                logger.info(f"Domain {domain_name} is not blocked, forwarding request...")
                 response = self.forward_request(data)
                 if response:
                     # Cache the response
@@ -145,16 +147,16 @@ class DNSHandler:
             return b""
 
     def is_blocked_domain(self, domain_name: str) -> bool:
+        """Checks if the queried domain is in the blocked list."""
         try:
-            """Checks if the queried domain is in the blocked list."""
             return domain_name in self.blocked_domains
         except Exception as e:
             logger.error(f"Exception in is_blocked_domain: {e}")
             return False
 
     def forward_request(self, data: bytes) -> DNSRecord:
+        """Forward the DNS request and return a DNS record."""
         try:
-            """Forwards the DNS request to the fastest responding resolver."""
             response_queue = Queue()
 
             def query_resolver(sock, server, data, queue):
@@ -189,8 +191,8 @@ class DNSHandler:
             return DNSRecord()
 
     def create_blocked_response(self, request: DNSRecord) -> bytes:
+        """Create a DNS response for a blocked domain."""
         try:
-            """Creates a DNS response indicating the domain is blocked."""
             response = request.reply()
             response.header.rcode = DNSHandler.NXDOMAIN
             return response.pack()
@@ -199,16 +201,16 @@ class DNSHandler:
             return b""
 
     async def handle_client(self, data: bytes, client_addr: tuple, server_sock: socket) -> None:
+        """Handle an incoming DNS client request asynchronously."""
         try:
-            """Handles a single DNS request asynchronously."""
             response_data = self.handle_dns_request(data)
             server_sock.sendto(response_data, client_addr)
         except Exception as e:
             logger.error(f"Exception in handle_client: {e}")
 
     async def handle_socket(self, sock: socket) -> None:
+        """Process incoming data from the given socket asynchronously."""
         try:
-            """Handles incoming requests for a specific socket."""
             loop = asyncio.get_running_loop()
             while True:
                 try:
@@ -220,7 +222,7 @@ class DNSHandler:
             logger.error(f"Exception in handle_socket: {e}")
 
     async def broadcast_listener(self) -> None:
-        """Listens for LAN discovery broadcasts and responds asynchronously."""
+        """Asynchronously listen for LAN broadcast discovery messages."""
         try:
             self.broadcast_sock = socket(AF_INET, SOCK_DGRAM)
             self.broadcast_sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
@@ -253,7 +255,7 @@ class DNSHandler:
 
     @staticmethod
     def get_ip_for_interface(interface_name: str) -> str:
-        """Gets the IP address for a given network interface using ipconfig."""
+        """Retrieve the IP address for a given network interface."""
         try:
             addrs = psutil.net_if_addrs()
             if interface_name in addrs:
@@ -267,8 +269,8 @@ class DNSHandler:
             return None
 
     async def run(self) -> None:
+        """Run the DNS server and broadcast listener concurrently."""
         try:
-            """Runs the DNS server and broadcast listener using asyncio for IPv4."""
             server_sock = socket(AF_INET, SOCK_DGRAM)
             server_sock.bind((self.listen_ip, self.listen_port))
             logger.info(f"DNS server listening on {self.listen_ip}:{self.listen_port}")
@@ -289,8 +291,8 @@ class DNSHandler:
                 self.broadcast_sock.close()
 
     def close(self) -> None:
+        """Close all sockets used by the DNSHandler."""
         try:
-            """Closes all resolver sockets and broadcast socket."""
             for sock, _ in self.sockets:
                 sock.close()
             if self.broadcast_sock:
@@ -300,6 +302,7 @@ class DNSHandler:
 
     @classmethod
     def create_dns_handler(cls, listen_ip: str = "0.0.0.0", listen_port: int = None) -> "DNSHandler":
+        """Create and return a DNSHandler instance with the specified ip and port."""
         try:
             if listen_port is None:
                 listen_port = cls.DNS_PORT

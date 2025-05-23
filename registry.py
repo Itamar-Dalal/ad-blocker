@@ -33,6 +33,7 @@ class RegistryHandler:
 
     KEY = HKEY_CURRENT_USER
     def __init__(self):
+        """Initialize the RegistryHandler and create the settings key if needed."""
         try:
             settings_key_path = rf"{RegistryHandler.REGISTRY_PATH}\{RegistryHandler.SETTINGS_PATH}"
             CreateKey(RegistryHandler.KEY, settings_key_path)
@@ -43,15 +44,10 @@ class RegistryHandler:
                     self.change_theme(RegistryHandler.LIGHT_THEME) # Default theme is light
         except Exception as e:
             logger.error(f"Failed to initialize RegistryHandler: {e}")
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
-    
+                
     @staticmethod
     def change_theme(theme_value: int):
+        """Change the theme setting in the registry."""
         try:
             if theme_value not in (RegistryHandler.LIGHT_THEME, RegistryHandler.DARK_THEME):
                 raise ValueError(f"Invalid theme value: {theme_value}. Must be either {RegistryHandler.LIGHT_THEME} or {RegistryHandler.DARK_THEME}")
@@ -64,6 +60,7 @@ class RegistryHandler:
 
     @staticmethod
     def retrieve_theme() -> int:
+        """Retrieve the current theme setting from the registry."""
         try:
             settings_key_path = rf"{RegistryHandler.REGISTRY_PATH}\{RegistryHandler.SETTINGS_PATH}"
             with OpenKey(RegistryHandler.KEY, settings_key_path, 0, KEY_ALL_ACCESS) as settings_key:

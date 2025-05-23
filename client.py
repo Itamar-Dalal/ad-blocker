@@ -27,7 +27,7 @@ class Client:
     TIMEOUT: int = 5
 
     def __init__(self) -> None:
-        """Initialize the Client class."""
+        """Initialize the Client, set up the QApplication and prepare the UI."""
         self.app = QApplication([])
         self.app.setWindowIcon(gui.GUI.get_app_icon())
         if sys.platform == "win32":
@@ -41,10 +41,12 @@ class Client:
         self.udp_handler = UDPHandler()
 
     def __repr__(self) -> str:
+        """Return a string representation of the Client."""
         return f"Client()"
     
     @classmethod
     def create_client(cls) -> "Client":
+        """Factory method to create a new Client instance."""
         return cls()
 
     def verify_connection_args(call: Callable):
@@ -279,6 +281,7 @@ class Client:
 
     @verify_connection_args
     def connect_to_server(self, ip: str, port: str) -> None:
+        """Establish a TLS connection to the server using the provided IP and port."""
         try:
             self.server = socket(AF_INET, SOCK_STREAM)
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -314,11 +317,13 @@ class Client:
     
     @verify_connect_to_dns_args
     def connect_to_dns(self, interface: str, dns_ip: str) -> None:
+        """Set the DNS configuration to connect using the given interface and DNS IP."""
         DNSConfig.change_dns(interface, dns_ip)
         self.window.home_window()
 
     @verify_login_args
     def login(self, username: str, password: str) -> None:
+        """Send a login request with the given username and password."""
         try:
             self.protocol.send_login(self.server, username, password)
             response = self.protocol.recv_data(self.server)
@@ -353,6 +358,7 @@ class Client:
             self.window.login_window(f"Error: {e}")
 
     def logout(self) -> None:
+        """Send a logout request to the server and update UI status."""
         try:
             self.protocol.send_logout(self.server)
             response = self.protocol.recv_data(self.server)
@@ -382,6 +388,7 @@ class Client:
 
     @verify_block_domain_args
     def block_domain(self, domain: str) -> None:
+        """Send a request to block the specified domain."""
         try:
             self.protocol.send_add_domain(self.server, domain)
             response = self.protocol.recv_data(self.server)
@@ -412,6 +419,7 @@ class Client:
 
     @verify_unblock_domain_args
     def unblock_domain(self, domain: str) -> None:
+        """Send a request to unblock the specified domain."""
         try:
             self.protocol.send_remove_domain(self.server, domain)
             response = self.protocol.recv_data(self.server)
@@ -442,6 +450,7 @@ class Client:
 
     @verify_create_account_args
     def create_account(self, username: str, password: str, email: str) -> None:
+        """Send a request to create a new account with the provided details."""
         try:
             self.protocol.send_create_user(self.server, username, password, email)
             response = self.protocol.recv_data(self.server)
@@ -477,6 +486,7 @@ class Client:
 
     @verify_verification_args
     def verify_email(self, code: str) -> None:
+        """Send the email verification code to the server."""
         try:
             self.protocol.send_verification_code(self.server, code)
             response = self.protocol.recv_data(self.server)
@@ -512,6 +522,7 @@ class Client:
 
     @verify_forgot_password_args
     def forgot_password(self, email: str) -> None:
+        """Initiate the forgot password procedure for the given email."""
         try:
             self.protocol.send_forgot_password(self.server, email)
             response = self.protocol.recv_data(self.server)
@@ -541,6 +552,7 @@ class Client:
     
     @verify_verification_args
     def forgot_password_code(self, code: str) -> None:
+        """Submit the verification code for password reset."""
         try:
             self.protocol.send_forgot_password_code(self.server, code)
             response = self.protocol.recv_data(self.server)
@@ -576,6 +588,7 @@ class Client:
     
     @verify_reset_password_args
     def reset_password(self, password: str) -> None:
+        """Send a request to reset the password to the provided new password."""
         try:
             self.protocol.send_reset_password(self.server, password)
             response = self.protocol.recv_data(self.server)
@@ -602,6 +615,7 @@ class Client:
             self.window.reset_password_window(f"Error: {e}")
 
     def get_blocked_domains(self):
+        """Retrieve the list of domains that are currently blocked."""
         try:
             self.protocol.send_get_blocked_domains(self.server)
             response = self.protocol.recv_data(self.server)
@@ -633,6 +647,7 @@ class Client:
             return []
 
     def get_all_users(self):
+        """Retrieve a list of all users from the server (admin only)."""
         try:
             self.protocol.send_get_all_users(self.server)
             response = self.protocol.recv_data(self.server)
@@ -659,6 +674,7 @@ class Client:
             return []
 
     def get_all_domains(self):
+        """Retrieve a complete list of domains from the server (admin only)."""
         try:
             self.protocol.send_get_all_domains(self.server)
             response = self.protocol.recv_data(self.server)
@@ -692,6 +708,7 @@ class Client:
             return []
 
     def delete_user(self, username):
+        """Send a request to delete the specified user (admin only)."""
         try:
             self.protocol.send_delete_user(self.server, username)
             response = self.protocol.recv_data(self.server)
@@ -722,6 +739,7 @@ class Client:
             return False
 
     def get_current_username(self):
+        """Retrieve the current logged-in username from the server."""
         try:
             self.protocol.send_get_current_username(self.server)
             response = self.protocol.recv_data(self.server)
@@ -735,6 +753,7 @@ class Client:
             return "guest"
 
     def handle_error(self, response: list) -> int:
+        """Log and return the error code received from the server."""
         logger.error(f"Received Error: {' '.join(response)}")
         if len(response) < 2 or not response[1].isnumeric():
             self.invalid_response(response)
@@ -742,16 +761,18 @@ class Client:
         return error_code
 
     def invalid_response(self, response: list) -> None:
+        """Handle an invalid response from the server."""
         logger.error(f"Invalid response: {' '.join(response)}")
         self.exit_client()
 
     def exit_client(self) -> None:
+        """Cleanly exit the client application and close server connection."""
         self.app.exit()
         if self.server:
             self.server.close()
 
     def run(self):
-        """Check for admin privileges and run the client."""
+        """Run the client application; elevate privileges if needed then show the UI."""
         try:
             is_admin = ctypes.windll.shell32.IsUserAnAdmin()
         except Exception:
@@ -847,7 +868,7 @@ class Client:
             self.app.exec()
 
     def find_server_in_lan(self):
-        """Broadcasts a UDP message to find the server in the LAN and connects if found."""
+        """Broadcast a UDP message to discover the server in the LAN."""
         try:
             udp_sock = socket(AF_INET, SOCK_DGRAM)
             udp_sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
@@ -871,7 +892,7 @@ class Client:
             self.window.connect_to_server_window(f"Error: {e}")
 
     def find_dns_in_lan(self, interface: str):
-        """Broadcasts a UDP message to find a DNS server in the LAN and fills the DNS IP field if found."""
+        """Broadcast a UDP message to locate a DNS server for the given interface."""
         try:
             udp_sock = socket(AF_INET, SOCK_DGRAM)
             udp_sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)

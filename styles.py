@@ -180,6 +180,7 @@ class Styles:
 
     @staticmethod
     def update_theme_styles():
+        """Update widget style definitions based on the registry theme setting."""
         if RegistryHandler.retrieve_theme() == RegistryHandler.LIGHT_THEME:
             Styles.INPUT_STYLE = """
                 QLineEdit {

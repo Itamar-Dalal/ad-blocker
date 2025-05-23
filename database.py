@@ -21,10 +21,12 @@ class UsersDBHandler:
     SALT_LENGTH = 16
 
     def __init__(self, db_path=Settings.DATABASE_PATH.value) -> None:
+        """Initialize the user database handler and create the users table if needed."""
         self.db_path = db_path
         self.create_table()
 
     def create_table(self):
+        """Create the users table if it does not already exist."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -37,21 +39,25 @@ class UsersDBHandler:
             conn.commit()
 
     def get_connection(self):
+        """Return a new SQLite connection."""
         return sqlite3.connect(self.db_path)
 
     def is_username_exist(self, username):
+        """Check if a username exists in the users table."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM users WHERE username=?", (username,))
             return cursor.fetchone() is not None
 
     def is_email_exist(self, email):
+        """Check if an email exists in the users table."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM users WHERE email=?", (email,))
             return cursor.fetchone() is not None
 
     def get_email(self, username):
+        """Retrieve the email associated with a username."""
         if not self.is_username_exist(username):
             return None
         with self.get_connection() as conn:
@@ -61,6 +67,7 @@ class UsersDBHandler:
             return email
 
     def get_username(self, email) -> str:
+        """Retrieve the username associated with an email."""
         if not self.is_email_exist(email):
             return None
         with self.get_connection() as conn:
@@ -70,6 +77,7 @@ class UsersDBHandler:
             return username
 
     def is_password_ok(self, username, password):
+        """Validate whether the given password matches the one stored for the username."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -84,6 +92,7 @@ class UsersDBHandler:
             return False
 
     def save_user(self, username, email, password) -> None:
+        """Save a new user to the database with hashed password."""
         salt = urandom(UsersDBHandler.SALT_LENGTH)
         hashed_password = sha256(password.encode() + salt + UsersDBHandler.PEPPER).hexdigest()
         with self.get_connection() as conn:
@@ -95,6 +104,7 @@ class UsersDBHandler:
             conn.commit()
 
     def update_user_password(self, username, new_password) -> None:
+        """Update the password for the given username."""
         salt = urandom(UsersDBHandler.SALT_LENGTH)
         hashed_password = sha256(new_password.encode() + salt + UsersDBHandler.PEPPER).hexdigest()
         with self.get_connection() as conn:
@@ -105,6 +115,7 @@ class UsersDBHandler:
             conn.commit()
 
     def delete_user(self, username) -> None:
+        """Delete the user with the given username from the database."""
         if self.is_username_exist(username):
             with self.get_connection() as conn:
                 cursor = conn.cursor()
@@ -115,11 +126,13 @@ class EmailCodeDBHandler:
     TIMEOUT = Settings.EMAIL_CODE_TIMEOUT.value
 
     def __init__(self, db_path=Settings.DATABASE_PATH.value) -> None:
+        """Initialize the email code handler and clean expired codes."""
         self.db_path = db_path
         self.create_table()
         self.clean_expired_codes()
 
     def create_table(self):
+        """Create the email codes table if it does not exist."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -130,15 +143,18 @@ class EmailCodeDBHandler:
             conn.commit()
 
     def get_connection(self):
+        """Return a new SQLite connection."""
         return sqlite3.connect(self.db_path)
 
     def is_email_exist(self, email) -> bool:
+        """Check if an email exists in the email codes table."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM emails WHERE email=?", (email,))
             return cursor.fetchone() is not None
 
     def is_timeout_passed(self, email) -> bool:
+        """Determine if the timeout period for the email code has passed."""
         if not self.is_email_exist(email):
             return True
         with self.get_connection() as conn:
@@ -148,6 +164,7 @@ class EmailCodeDBHandler:
             return time() > timeout
 
     def save_email(self, email) -> None:
+        """Save or update the email with a new timeout value."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -157,6 +174,7 @@ class EmailCodeDBHandler:
             conn.commit()
 
     def delete_email(self, email) -> None:
+        """Delete the specified email from the email codes table."""
         if self.is_email_exist(email):
             with self.get_connection() as conn:
                 cursor = conn.cursor()
@@ -164,12 +182,14 @@ class EmailCodeDBHandler:
                 conn.commit()
 
     def clean_expired_codes(self) -> None:
+        """Delete all expired email codes."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM emails WHERE timeout < ?", (time(),))
             conn.commit()
 
     def delete_table(self) -> None:
+        """Drop the emails table from the database."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("DROP TABLE IF EXISTS emails")
@@ -183,10 +203,12 @@ class DomainsDBHandler:
     BLOCKLIST_SOURCE = "external_dataset"
 
     def __init__(self, db_path=Settings.DATABASE_PATH.value) -> None:
+        """Initialize the domains database handler and create the domains table."""
         self.db_path = db_path
         self.create_table()
 
     def create_table(self):
+        """Create the domains table if not exists and add missing columns."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -207,9 +229,11 @@ class DomainsDBHandler:
             conn.commit()
 
     def get_connection(self):
+        """Return a new SQLite connection."""
         return sqlite3.connect(self.db_path)
 
     def save_domain(self, domain, username, source="user") -> None:
+        """Insert or update a domain record as blocked."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -219,18 +243,21 @@ class DomainsDBHandler:
             conn.commit()
 
     def remove_domain(self, domain) -> None:
+        """Mark the specified domain as unblocked in the database."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("UPDATE domains SET is_blocked=0 WHERE domain=?", (domain,))
             conn.commit()
 
     def is_domain_exist(self, domain) -> bool:
+        """Check if the domain exists in the blocked domains."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM domains WHERE domain=? AND is_blocked=1", (domain,))
             return cursor.fetchone() is not None
 
     def get_domains(self) -> set:
+        """Return a set of currently blocked domains."""
         # Only return currently blocked domains
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -239,6 +266,7 @@ class DomainsDBHandler:
 
     @staticmethod
     def is_valid_domain(domain: str, use_dns_validation: bool = True) -> bool:
+        """Validate the domain using regex and optionally DNS resolution."""
         DOMAIN_REGEX = r"^(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})$"
         if not re.match(DOMAIN_REGEX, domain):
             logger.debug(f"Domain {domain} failed regex validation")
@@ -254,6 +282,7 @@ class DomainsDBHandler:
         return True
 
     def fetch_dataset(self, url: str) -> List[str]:
+        """Fetch and parse a list of domains from an external dataset URL."""
         try:
             response = requests.get(url, timeout=10)
             response.raise_for_status()
@@ -281,6 +310,7 @@ class DomainsDBHandler:
             return []
 
     def expand_domains_from_datasets(self) -> int:
+        """Expand the domains database with new entries from datasets."""
         existing_domains = self.get_domains()
         new_domains_count = 0
 
@@ -302,6 +332,7 @@ class DomainsDBHandler:
         return new_domains_count
 
     def get_user_blocked_domains(self, username: str) -> list:
+        """Retrieve the list of domains blocked by the user."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -313,6 +344,7 @@ class DomainsDBHandler:
             return domains
 
     def get_all_domains(self):
+        """Retrieve all domain records from the database."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT domain, username, time, source, is_blocked FROM domains")
