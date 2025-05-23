@@ -1,0 +1,56 @@
+import subprocess
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+class DNSConfig:
+    """
+    A class to manage DNS server settings for network interfaces on Windows.
+    """
+
+    @staticmethod
+    def change_dns(interface_name, primary_dns):
+        """Change the primary DNS server for the specified network interface."""
+        try:
+            # Command to set primary DNS
+            cmd = f'netsh interface ip set dns name="{interface_name}" source=static addr={primary_dns}'
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            
+            if result.returncode != 0:
+                logger.error(f"Error setting primary DNS: {result.stderr}")
+                return False
+            
+            logger.info(f"Primary DNS set to {primary_dns} for {interface_name}")
+            return True
+
+        except Exception as e:
+            logger.error(f"An error occurred: {e}")
+            return False
+
+    @staticmethod
+    def get_network_interfaces():
+        """Retrieve a list of available network interface names."""
+        try:
+            cmd = 'netsh interface show interface'
+            # Use utf-8 encoding and ignore errors to handle non-ASCII characters
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+            
+            if result.returncode != 0:
+                logger.error(f"Error running netsh command: {result.stderr}")
+                return []
+            
+            interfaces = []
+            # Parse the output to extract interface names
+            lines = result.stdout.splitlines()
+            for line in lines:
+                if "Connected" in line and "Name" not in line:
+                    parts = line.split()
+                    if len(parts) > 3:
+                        interface_name = " ".join(parts[3:])
+                        interfaces.append(interface_name)
+            
+            return interfaces
+        except Exception as e:
+            logger.error(f"Error retrieving interfaces: {e}")
+            return []
